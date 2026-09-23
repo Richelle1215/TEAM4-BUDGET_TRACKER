@@ -119,6 +119,12 @@ class StudentViewModel @Inject constructor(
         }
     }
 
+    fun updatePayment(payment: Payment) {
+        viewModelScope.launch {
+            repository.updatePayment(payment)
+        }
+    }
+
     fun deleteAllStudents() {
         viewModelScope.launch {
             repository.deleteAllStudents()

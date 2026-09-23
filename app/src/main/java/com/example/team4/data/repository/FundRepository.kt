@@ -182,6 +182,15 @@ class FundRepository @Inject constructor(
         }
     }
 
+    suspend fun updatePayment(payment: Payment) {
+        fundDao.updatePayment(payment)
+        try {
+            firestoreService.savePayment(payment)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
     suspend fun deletePayment(payment: Payment) {
         fundDao.deletePayment(payment)
         try {

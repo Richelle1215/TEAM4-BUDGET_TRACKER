@@ -37,17 +37,14 @@ fun StudentListScreen(
     var editingStudent by remember { mutableStateOf<Student?>(null) }
 
     Scaffold(
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { showAddDialog = true },
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = Color.White
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Add Student")
-            }
-        }
+        containerColor = Color.White
     ) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(bottom = padding.calculateBottomPadding())) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.White)
+                .padding(bottom = padding.calculateBottomPadding())
+        ) {
             // Blue Header Section
             Surface(
                 color = MaterialTheme.colorScheme.primary,

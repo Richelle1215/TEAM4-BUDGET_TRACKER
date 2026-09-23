@@ -214,6 +214,7 @@ fun StudentDetailScreen(
                             items(payments.sortedByDescending { it.date }) { payment ->
                                 PaymentItemTimeline(
                                     payment = payment,
+                                    onEdit = { editingPayment = payment },
                                     onDelete = { viewModel.deletePayment(payment) }
                                 )
                             }
@@ -253,6 +254,17 @@ fun StudentDetailScreen(
             onConfirm = { updatedName ->
                 viewModel.updateStudent(student.copy(name = updatedName))
                 editingStudent = null
+            }
+        )
+    }
+
+    editingPayment?.let { payment ->
+        EditPaymentDialog(
+            payment = payment,
+            onDismiss = { editingPayment = null },
+            onConfirm = { updatedAmount ->
+                viewModel.updatePayment(payment.copy(amount = updatedAmount))
+                editingPayment = null
             }
         )
     }
@@ -361,6 +373,7 @@ fun ProgressCard(
 @Composable
 fun PaymentItemTimeline(
     payment: Payment,
+    onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
     val dateFormat = SimpleDateFormat("MMM d,  2024", Locale.getDefault())
@@ -414,8 +427,13 @@ fun PaymentItemTimeline(
                     )
                 }
                 
-                IconButton(onClick = onDelete) {
-                    Icon(Icons.Default.Delete, contentDescription = "Delete Payment", tint = Color.Gray)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onEdit) {
+                        Icon(Icons.Default.Edit, contentDescription = "Edit Payment", tint = Color.Gray)
+                    }
+                    IconButton(onClick = onDelete) {
+                        Icon(Icons.Default.Delete, contentDescription = "Delete Payment", tint = Color.Gray)
+                    }
                 }
             }
         }

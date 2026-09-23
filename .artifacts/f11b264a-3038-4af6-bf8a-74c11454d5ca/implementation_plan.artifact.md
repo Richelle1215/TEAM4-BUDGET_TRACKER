@@ -1,33 +1,40 @@
-# Implementation Plan - Clear/Delete All Students Feature
+# Implementation Plan - Student Management Refinements & UI Styling
 
-Add a feature to clear/delete all students from the database and UI, providing a button in the Student List screen with a confirmation dialog.
+Implement user requests:
+1. Remove the floating action button for adding students.
+2. Allow editing student payment records (similar to expenses) in addition to student names.
+3. Make the background white and all text black in the student list.
 
 ## User Review Required
 
 > [!IMPORTANT]
-> This will permanently delete all student records (and optionally their associated payments) from the local Room database and Firestore.
+> The add student button is removed since students are pre-seeded via the definitive student list. Payment history items will now feature an edit button opening `EditPaymentDialog`.
 
 ## Proposed Changes
 
-### Data Layer (`FundDao.kt`, `FundRepository.kt`, `FirestoreService.kt`)
-- **[MODIFY] [FundDao.kt](file:///C:/Users/rm/AndroidStudioProjects/TEAM4/app/src/main/java/com/example/team4/data/local/FundDao.kt)**
-  - Add `@Query("DELETE FROM students") suspend fun deleteAllStudents()`
+### Data & Domain Layer (`FundRepository.kt`)
 - **[MODIFY] [FundRepository.kt](file:///C:/Users/rm/AndroidStudioProjects/TEAM4/app/src/main/java/com/example/team4/data/repository/FundRepository.kt)**
-  - Add `suspend fun deleteAllStudents()` to clear local table and remove students from Firestore.
+  - Add `suspend fun updatePayment(payment: Payment)`
 
 ### ViewModel Layer (`StudentViewModel.kt`)
 - **[MODIFY] [StudentViewModel.kt](file:///C:/Users/rm/AndroidStudioProjects/TEAM4/app/src/main/java/com/example/team4/ui/viewmodel/StudentViewModel.kt)**
-  - Add `fun deleteAllStudents()` function delegating to repository.
+  - Add `fun updatePayment(payment: Payment)`
 
-### UI Layer (`StudentListScreen.kt`)
+### Dialogs (`Dialogs.kt`)
+- **[MODIFY] [Dialogs.kt](file:///C:/Users/rm/AndroidStudioProjects/TEAM4/app/src/main/java/com/example/team4/ui/screen/Dialogs.kt)**
+  - Add `EditPaymentDialog`
+
+### UI Screens (`StudentListScreen.kt`, `StudentDetailScreen.kt`)
 - **[MODIFY] [StudentListScreen.kt](file:///C:/Users/rm/AndroidStudioProjects/TEAM4/app/src/main/java/com/example/team4/ui/screen/StudentListScreen.kt)**
-  - Add a "Delete All" / "Clear All Students" option in the Student List screen header or overflow menu.
-  - Show a confirmation dialog ("Are you sure you want to delete all students?").
+  - Remove `floatingActionButton` for adding students.
+  - Set Scaffold container color and background to pure white (`Color.White`), and ensure all text is black.
+- **[MODIFY] [StudentDetailScreen.kt](file:///C:/Users/rm/AndroidStudioProjects/TEAM4/app/src/main/java/com/example/team4/ui/screen/StudentDetailScreen.kt)**
+  - Add edit action button to payment items and integrate `EditPaymentDialog`.
 
 ## Verification Plan
 
 ### Automated Tests
-- Build project successfully using Gradle (`app:assembleDebug`).
+- Run Gradle build (`app:assembleDebug`) to verify compilation.
 
 ### Manual Verification
-- Deploy to emulator/device, navigate to Students tab, click "Clear All Students", confirm the action, and verify the student list becomes empty (0 students).
+- Deploy to emulator/device, verify student list background is white with black text, check that add student FAB is gone, and test editing student names and payment records.

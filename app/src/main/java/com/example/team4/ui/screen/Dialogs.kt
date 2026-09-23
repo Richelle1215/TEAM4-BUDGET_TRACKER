@@ -7,6 +7,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.unit.dp
 import com.example.team4.data.model.Expense
+import com.example.team4.data.model.Payment
 import com.example.team4.data.model.Student
 
 @Composable
@@ -77,6 +78,44 @@ fun EditExpenseDialog(
             Button(onClick = {
                 val amt = amount.toDoubleOrNull() ?: 0.0
                 if (desc.isNotBlank()) onConfirm(desc, amt)
+            }) {
+                Text("Save Changes")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@Composable
+fun EditPaymentDialog(
+    payment: Payment,
+    onDismiss: () -> Unit,
+    onConfirm: (Double) -> Unit
+) {
+    var amount by remember { mutableStateOf(payment.amount.toString()) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Edit Payment") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    value = amount,
+                    onValueChange = { amount = it },
+                    label = { Text("Amount (₱)") },
+                    shape = RoundedCornerShape(12.dp),
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal)
+                )
+            }
+        },
+        confirmButton = {
+            Button(onClick = {
+                val amt = amount.toDoubleOrNull() ?: 0.0
+                onConfirm(amt)
             }) {
                 Text("Save Changes")
             }
