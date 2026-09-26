@@ -14,9 +14,7 @@ import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,10 +42,13 @@ fun ImportExportScreen(
     val students by studentViewModel.students.collectAsState()
     val payments by studentViewModel.payments.collectAsState()
     val expenses by expenseViewModel.expenses.collectAsState()
+    val clothingOrders by studentViewModel.clothingOrders.collectAsState()
+    var showExportDialog by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(Color.White)
             .verticalScroll(rememberScrollState())
             .padding(bottom = 32.dp)
     ) {
@@ -113,7 +114,8 @@ fun ImportExportScreen(
                         Text(
                             text = "Sync Active",
                             style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Black
                         )
                         Text(
                             text = "Last synced: Just now",
@@ -132,7 +134,7 @@ fun ImportExportScreen(
             }
 
             // Financial Summary
-            Text("Financial Summary", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text("Financial Summary", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = Color.Black)
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(24.dp),
@@ -154,7 +156,7 @@ fun ImportExportScreen(
             }
 
             // Collection Status
-            Text("Collection Status", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text("Collection Status", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = Color.Black)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -165,20 +167,24 @@ fun ImportExportScreen(
             }
 
             // Export Data
-            Text("Export Data", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text("Export Data", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = Color.Black)
             ExportActionRow(
-                title = "Export to PDF",
-                subtitle = "Full financial statement with student details",
+                title = "Export Report (PDF / Excel)",
+                subtitle = "Choose category (Students, Shirts, Expenses) and format",
                 icon = Icons.Default.PictureAsPdf,
-                onClick = { exportService.exportToPdf(students, expenses) }
-            )
-            ExportActionRow(
-                title = "Export to CSV",
-                subtitle = "Spreadsheet-ready data for all records",
-                icon = Icons.Default.Description,
-                onClick = { exportService.exportToCsv(students, payments, expenses) }
+                onClick = { showExportDialog = true }
             )
         }
+    }
+
+    if (showExportDialog) {
+        ExportOptionsDialog(
+            onDismiss = { showExportDialog = false },
+            onConfirm = { reportType, format ->
+                exportService.exportReport(reportType, format, students, payments, expenses, clothingOrders)
+                showExportDialog = false
+            }
+        )
     }
 }
 

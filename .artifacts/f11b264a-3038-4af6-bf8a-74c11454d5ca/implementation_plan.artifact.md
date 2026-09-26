@@ -1,40 +1,31 @@
-# Implementation Plan - Student Management Refinements & UI Styling
+# Implementation Plan - Global White Background & Black Text Styling
 
-Implement user requests:
-1. Remove the floating action button for adding students.
-2. Allow editing student payment records (similar to expenses) in addition to student names.
-3. Make the background white and all text black in the student list.
+Update all screens (`StudentListScreen`, `StudentDetailScreen`, `ExpenseScreen`, `ImportExportScreen`) and dialogs to have a clean, consistent **white background** and **black text** styling across the app.
 
 ## User Review Required
 
 > [!IMPORTANT]
-> The add student button is removed since students are pre-seeded via the definitive student list. Payment history items will now feature an edit button opening `EditPaymentDialog`.
+> - All screen backgrounds, card surfaces, and list containers will be styled with pure white backgrounds (`Color.White`).
+> - All textual elements across headers, lists, cards, and dialogs will be styled in black (`Color.Black` or dark text).
 
 ## Proposed Changes
 
-### Data & Domain Layer (`FundRepository.kt`)
-- **[MODIFY] [FundRepository.kt](file:///C:/Users/rm/AndroidStudioProjects/TEAM4/app/src/main/java/com/example/team4/data/repository/FundRepository.kt)**
-  - Add `suspend fun updatePayment(payment: Payment)`
-
-### ViewModel Layer (`StudentViewModel.kt`)
-- **[MODIFY] [StudentViewModel.kt](file:///C:/Users/rm/AndroidStudioProjects/TEAM4/app/src/main/java/com/example/team4/ui/viewmodel/StudentViewModel.kt)**
-  - Add `fun updatePayment(payment: Payment)`
-
-### Dialogs (`Dialogs.kt`)
-- **[MODIFY] [Dialogs.kt](file:///C:/Users/rm/AndroidStudioProjects/TEAM4/app/src/main/java/com/example/team4/ui/screen/Dialogs.kt)**
-  - Add `EditPaymentDialog`
-
-### UI Screens (`StudentListScreen.kt`, `StudentDetailScreen.kt`)
+### UI Screens & Dialogs (`StudentListScreen.kt`, `StudentDetailScreen.kt`, `ExpenseScreen.kt`, `ImportExportScreen.kt`, `Dialogs.kt`)
 - **[MODIFY] [StudentListScreen.kt](file:///C:/Users/rm/AndroidStudioProjects/TEAM4/app/src/main/java/com/example/team4/ui/screen/StudentListScreen.kt)**
-  - Remove `floatingActionButton` for adding students.
-  - Set Scaffold container color and background to pure white (`Color.White`), and ensure all text is black.
+  - Ensure all list containers, cards, headers, and texts use white backgrounds and black text.
 - **[MODIFY] [StudentDetailScreen.kt](file:///C:/Users/rm/AndroidStudioProjects/TEAM4/app/src/main/java/com/example/team4/ui/screen/StudentDetailScreen.kt)**
-  - Add edit action button to payment items and integrate `EditPaymentDialog`.
+  - Ensure detail screen background, payment history cards, clothing order cards, and texts are white background with black text.
+- **[MODIFY] [ExpenseScreen.kt](file:///C:/Users/rm/AndroidStudioProjects/TEAM4/app/src/main/java/com/example/team4/ui/screen/ExpenseScreen.kt)**
+  - Style expense screen background white, expense cards white background with black text.
+- **[MODIFY] [ImportExportScreen.kt](file:///C:/Users/rm/AndroidStudioProjects/TEAM4/app/src/main/java/com/example/team4/ui/screen/ImportExportScreen.kt)**
+  - Style reports screen background white, cards white with black text.
+- **[MODIFY] [Dialogs.kt](file:///C:/Users/rm/AndroidStudioProjects/TEAM4/app/src/main/java/com/example/team4/ui/screen/Dialogs.kt)**
+  - Ensure all dialog backgrounds and text are white background and black text.
 
 ## Verification Plan
 
 ### Automated Tests
-- Run Gradle build (`app:assembleDebug`) to verify compilation.
+- Run Gradle build (`app:assembleDebug`) to ensure clean compilation.
 
 ### Manual Verification
-- Deploy to emulator/device, verify student list background is white with black text, check that add student FAB is gone, and test editing student names and payment records.
+- Deploy to emulator/device, verify that every screen (Students, Expenses, Reports, Student Detail) has a white background and black text.

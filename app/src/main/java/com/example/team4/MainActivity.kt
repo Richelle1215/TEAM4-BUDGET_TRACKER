@@ -9,8 +9,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.FactCheck
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Groups
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -25,12 +23,14 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.example.team4.ui.navigation.Screen
-import com.example.team4.ui.screen.DashboardScreen
 import com.example.team4.ui.screen.ExpenseScreen
 import com.example.team4.ui.screen.ImportExportScreen
 import com.example.team4.ui.screen.StudentDetailScreen
 import com.example.team4.ui.screen.StudentListScreen
 import com.example.team4.ui.theme.TEAM4Theme
+import com.example.team4.ui.viewmodel.DashboardViewModel
+import com.example.team4.ui.viewmodel.ExpenseViewModel
+import com.example.team4.ui.viewmodel.StudentViewModel
 import com.example.team4.util.ExportService
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -57,7 +57,6 @@ fun MainScreen(exportService: ExportService) {
     val currentDestination = navBackStackEntry?.destination
 
     val items = listOf(
-        NavigationItem("Home", Screen.Dashboard, Icons.Default.Home),
         NavigationItem("Students", Screen.Students, Icons.Default.Groups),
         NavigationItem("Expenses", Screen.Expenses, Icons.Default.Description),
         NavigationItem("Reports", Screen.ImportExport, Icons.AutoMirrored.Filled.FactCheck)
@@ -87,12 +86,9 @@ fun MainScreen(exportService: ExportService) {
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = Screen.Dashboard,
+            startDestination = Screen.Students,
             modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding())
         ) {
-            composable<Screen.Dashboard> {
-                DashboardScreen(hiltViewModel())
-            }
             composable<Screen.Students> {
                 StudentListScreen(
                     viewModel = hiltViewModel(),
@@ -113,7 +109,7 @@ fun MainScreen(exportService: ExportService) {
                 ExpenseScreen(hiltViewModel())
             }
             composable<Screen.ImportExport> {
-                ImportExportScreen(
+                ImportExportStudentWrapper(
                     studentViewModel = hiltViewModel(),
                     expenseViewModel = hiltViewModel(),
                     dashboardViewModel = hiltViewModel(),
@@ -122,6 +118,21 @@ fun MainScreen(exportService: ExportService) {
             }
         }
     }
+}
+
+@Composable
+fun ImportExportStudentWrapper(
+    studentViewModel: StudentViewModel,
+    expenseViewModel: ExpenseViewModel,
+    dashboardViewModel: DashboardViewModel,
+    exportService: ExportService
+) {
+    ImportExportScreen(
+        studentViewModel = studentViewModel,
+        expenseViewModel = expenseViewModel,
+        dashboardViewModel = dashboardViewModel,
+        exportService = exportService
+    )
 }
 
 data class NavigationItem(
