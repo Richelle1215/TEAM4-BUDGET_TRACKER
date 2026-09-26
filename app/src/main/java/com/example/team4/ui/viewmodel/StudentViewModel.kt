@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.team4.data.model.Student
 import com.example.team4.data.model.Payment
+import com.example.team4.data.model.ClothingOrder
 import com.example.team4.data.repository.FundRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
@@ -17,8 +18,7 @@ enum class StudentFilter {
 data class StudentWithStatus(
     val student: Student,
     val totalPaid: Double,
-    val status: StudentFilter,
-    val isEarlyBird: Boolean
+    val status: StudentFilter
 )
 
 data class StatusCounts(
@@ -45,16 +45,11 @@ class StudentViewModel @Inject constructor(
     ) { students, payments ->
         students.map { student ->
             val totalPaid = payments.filter { it.studentId == student.id }.sumOf { it.amount }
-            val status = when {
-                student.targetAmount == 0.0 -> StudentFilter.UNPAID
-                totalPaid >= student.targetAmount -> StudentFilter.PAID
-                else -> StudentFilter.UNPAID
-            }
+            val status = if (totalPaid > 0.0) StudentFilter.PAID else StudentFilter.UNPAID
             StudentWithStatus(
                 student = student,
                 totalPaid = totalPaid,
-                status = status,
-                isEarlyBird = student.targetAmount == 600.0
+                status = status
             )
         }
     }
@@ -155,5 +150,30 @@ class StudentViewModel @Inject constructor(
     
     fun getPaymentsForStudent(studentId: String): Flow<List<Payment>> {
         return payments.map { list -> list.filter { it.studentId == studentId } }
+    }
+
+    val clothingOrders: StateFlow<List<ClothingOrder>> = repository.getClothingOrders()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    fun getOrdersForStudent(studentId: String): Flow<List<ClothingOrder>> {
+        return clothingOrders.map { list -> list.filter { it.studentId == studentId } }
+    }
+
+    fun addClothingOrder(studentId: String, itemType: String, description: String, customName: String, customNumber: String, size: String, price: Double) {
+        viewModelScope.launch {
+            repository.addClothingOrder(studentId, itemType, description, customName, customNumber, size, price)
+        }
+    }
+
+    fun updateClothingOrder(order: ClothingOrder) {
+        viewModelScope.launch {
+            repository.updateClothingOrder(order)
+        }
+    }
+
+    fun deleteClothingOrder(order: ClothingOrder) {
+        viewModelScope.launch {
+            repository.deleteClothingOrder(order)
+        }
     }
 }
