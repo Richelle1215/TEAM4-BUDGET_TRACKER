@@ -11,7 +11,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -23,6 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.team4.data.model.ClothingOrder
 import com.example.team4.data.model.Payment
 import com.example.team4.ui.theme.*
 import com.example.team4.ui.viewmodel.StudentFilter
@@ -38,9 +38,13 @@ fun StudentDetailScreen(
 ) {
     val studentWithStatus by viewModel.getStudentWithStatus(studentId).collectAsState(initial = null)
     val payments by viewModel.getPaymentsForStudent(studentId).collectAsState(initial = emptyList())
+    val clothingOrders by viewModel.getOrdersForStudent(studentId).collectAsState(initial = emptyList())
+    
     var showPaymentDialog by remember { mutableStateOf(false) }
+    var showClothingDialog by remember { mutableStateOf(false) }
     var editingStudent by remember { mutableStateOf<com.example.team4.data.model.Student?>(null) }
     var editingPayment by remember { mutableStateOf<Payment?>(null) }
+    var editingClothingOrder by remember { mutableStateOf<ClothingOrder?>(null) }
 
     val statusColor = when (studentWithStatus?.status) {
         StudentFilter.PAID -> SuccessGreenDeep
@@ -48,15 +52,6 @@ fun StudentDetailScreen(
     }
 
     Scaffold(
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { showPaymentDialog = true },
-                containerColor = IndigoPrimary,
-                contentColor = Color.White
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Add Payment")
-            }
-        },
         bottomBar = { Spacer(Modifier.windowInsetsPadding(WindowInsets.navigationBars)) },
         containerColor = Color.White
     ) { padding ->
@@ -66,7 +61,7 @@ fun StudentDetailScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(260.dp)
+                        .height(240.dp)
                         .background(statusColor)
                 ) {
                     Column(
@@ -104,7 +99,7 @@ fun StudentDetailScreen(
 
                         // Avatar
                         Surface(
-                            modifier = Modifier.size(80.dp),
+                            modifier = Modifier.size(72.dp),
                             shape = CircleShape,
                             color = Color.White.copy(alpha = 0.2f)
                         ) {
@@ -122,7 +117,7 @@ fun StudentDetailScreen(
                             }
                         }
 
-                        Spacer(Modifier.height(12.dp))
+                        Spacer(Modifier.height(8.dp))
 
                         // Student Name
                         Text(
@@ -132,7 +127,7 @@ fun StudentDetailScreen(
                             color = Color.White
                         )
 
-                        Spacer(Modifier.height(8.dp))
+                        Spacer(Modifier.height(6.dp))
 
                         // Status Pills Row
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -150,74 +145,109 @@ fun StudentDetailScreen(
                                     )
                                     Spacer(Modifier.width(6.dp))
                                     Text(
-                                        text = if (studentWithStatus?.status == StudentFilter.PAID) "Paid in Full" else "Unpaid",
+                                        text = if (studentWithStatus?.status == StudentFilter.PAID) "Paid" else "Unpaid",
                                         color = Color.White,
                                         style = MaterialTheme.typography.labelLarge,
                                         fontWeight = FontWeight.Bold
                                     )
                                 }
                             }
-
-                            // Early Bird Pill
-                            if (studentWithStatus?.isEarlyBird == true) {
-                                Surface(
-                                    color = Color(0xFFFFF3E0),
-                                    shape = RoundedCornerShape(20.dp)
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Icon(
-                                            Icons.Default.Star,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(14.dp),
-                                            tint = Color(0xFFE65100)
-                                        )
-                                        Spacer(Modifier.width(4.dp))
-                                        Text(
-                                            text = "EARLY BIRD",
-                                            color = Color(0xFFE65100),
-                                            style = MaterialTheme.typography.labelMedium,
-                                            fontWeight = FontWeight.Black
-                                        )
-                                    }
-                                }
-                            }
                         }
                     }
                 }
 
-                // Payment History Section
-                Column(
+                // Scrollable Content Section
+                LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(horizontal = 20.dp)
-                        .padding(top = 60.dp)
+                        .padding(horizontal = 20.dp),
+                    verticalArrangement = Arrangement.spacedBy(20.dp),
+                    contentPadding = PaddingValues(top = 35.dp, bottom = 100.dp)
                 ) {
-                    Text(
-                        text = "Payment History",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF1A1C1E)
-                    )
-                    
-                    Spacer(Modifier.height(16.dp))
+                    // Payment History Section Header
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Payment History",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF1A1C1E)
+                            )
+                            Button(
+                                onClick = { showPaymentDialog = true },
+                                colors = ButtonDefaults.buttonColors(containerColor = IndigoPrimary, contentColor = Color.White),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                            ) {
+                                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.White)
+                                Spacer(Modifier.width(4.dp))
+                                Text("Add Payment", style = MaterialTheme.typography.labelMedium, color = Color.White)
+                            }
+                        }
+                    }
 
                     if (payments.isEmpty()) {
-                        EmptyPaymentState()
+                        item { EmptyPaymentState() }
                     } else {
-                        LazyColumn(
-                            verticalArrangement = Arrangement.spacedBy(12.dp),
-                            contentPadding = PaddingValues(bottom = 80.dp)
+                        items(payments.sortedByDescending { it.date }) { payment ->
+                            PaymentItemTimeline(
+                                payment = payment,
+                                onEdit = { editingPayment = payment },
+                                onDelete = { viewModel.deletePayment(payment) }
+                            )
+                        }
+                    }
+
+                    item {
+                        Spacer(Modifier.height(16.dp))
+                        HorizontalDivider(color = Color.LightGray.copy(alpha = 0.5f))
+                        Spacer(Modifier.height(16.dp))
+                    }
+
+                    // Clothing Orders Section
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            items(payments.sortedByDescending { it.date }) { payment ->
-                                PaymentItemTimeline(
-                                    payment = payment,
-                                    onEdit = { editingPayment = payment },
-                                    onDelete = { viewModel.deletePayment(payment) }
+                            Column {
+                                Text(
+                                    text = "Clothing Orders",
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF4A148C)
+                                )
+                                Text(
+                                    text = "Jerseys, Shirts, Names & Numbers",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color.Gray
                                 )
                             }
+                            Button(
+                                onClick = { showClothingDialog = true },
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7B1FA2), contentColor = Color.White),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                            ) {
+                                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.White)
+                                Spacer(Modifier.width(4.dp))
+                                Text("Add Order", style = MaterialTheme.typography.labelMedium, color = Color.White)
+                            }
+                        }
+                    }
+
+                    if (clothingOrders.isEmpty()) {
+                        item { EmptyClothingOrderState() }
+                    } else {
+                        items(clothingOrders.sortedByDescending { it.date }) { order ->
+                            ClothingOrderItemCard(
+                                order = order,
+                                onEdit = { editingClothingOrder = order },
+                                onDelete = { viewModel.deleteClothingOrder(order) }
+                            )
                         }
                     }
                 }
@@ -228,7 +258,7 @@ fun StudentDetailScreen(
                 ProgressCard(
                     modifier = Modifier
                         .align(Alignment.TopCenter)
-                        .padding(top = 210.dp)
+                        .padding(top = 205.dp)
                         .padding(horizontal = 20.dp),
                     item = status,
                     color = statusColor
@@ -243,6 +273,16 @@ fun StudentDetailScreen(
             onConfirm = { amount ->
                 viewModel.addPayment(studentId, amount, System.currentTimeMillis())
                 showPaymentDialog = false
+            }
+        )
+    }
+
+    if (showClothingDialog) {
+        AddClothingOrderDialog(
+            onDismiss = { showClothingDialog = false },
+            onConfirm = { itemType, desc, name, number, size, price ->
+                viewModel.addClothingOrder(studentId, itemType, desc, name, number, size, price)
+                showClothingDialog = false
             }
         )
     }
@@ -268,6 +308,24 @@ fun StudentDetailScreen(
             }
         )
     }
+
+    editingClothingOrder?.let { order ->
+        EditClothingOrderDialog(
+            order = order,
+            onDismiss = { editingClothingOrder = null },
+            onConfirm = { itemType, desc, name, number, size, price ->
+                viewModel.updateClothingOrder(order.copy(
+                    itemType = itemType,
+                    description = desc,
+                    customName = name,
+                    customNumber = number,
+                    size = size,
+                    price = price
+                ))
+                editingClothingOrder = null
+            }
+        )
+    }
 }
 
 @Composable
@@ -290,8 +348,11 @@ fun AddPaymentDialog(
             )
         },
         confirmButton = {
-            Button(onClick = { onConfirm(amount.toDoubleOrNull() ?: 0.0) }) {
-                Text("Confirm")
+            Button(
+                onClick = { onConfirm(amount.toDoubleOrNull() ?: 0.0) },
+                colors = ButtonDefaults.buttonColors(containerColor = IndigoPrimary, contentColor = Color.White)
+            ) {
+                Text("Confirm", color = Color.White)
             }
         },
         dismissButton = {
@@ -308,9 +369,6 @@ fun ProgressCard(
     item: com.example.team4.ui.viewmodel.StudentWithStatus,
     color: Color
 ) {
-    val progress = if (item.student.targetAmount > 0) 
-        (item.totalPaid / item.student.targetAmount).toFloat().coerceIn(0f, 1f) else 0f
-    
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -325,46 +383,17 @@ fun ProgressCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Payment Progress",
+                    text = "Total Payments Made",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold,
                     color = Color.Black
                 )
                 Text(
-                    text = "₱${item.totalPaid.toInt()}  /  ₱${item.student.targetAmount.toInt()}",
-                    style = MaterialTheme.typography.titleSmall,
+                    text = "₱${item.totalPaid.toInt()}",
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Black,
-                    color = Color.Black
+                    color = color
                 )
-            }
-            
-            Spacer(Modifier.height(12.dp))
-            
-            LinearProgressIndicator(
-                progress = { progress },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(10.dp)
-                    .clip(RoundedCornerShape(5.dp)),
-                color = color,
-                trackColor = Color(0xFFF0F0F0)
-            )
-            
-            Spacer(Modifier.height(12.dp))
-            
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(
-                    text = "${(progress * 100).toInt()}% complete",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.Black
-                )
-                if (item.totalPaid < item.student.targetAmount) {
-                    Text(
-                        text = "₱${(item.student.targetAmount - item.totalPaid).toInt()} remaining",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.Black
-                    )
-                }
             }
         }
     }
@@ -441,30 +470,156 @@ fun PaymentItemTimeline(
 }
 
 @Composable
+fun ClothingOrderItemCard(
+    order: ClothingOrder,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFF3E5F5)),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFCE93D8))
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Surface(
+                        modifier = Modifier.size(36.dp),
+                        shape = CircleShape,
+                        color = Color(0xFF7B1FA2)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text("👕", fontSize = 18.sp)
+                        }
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            text = order.itemType,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF4A148C)
+                        )
+                        if (order.description.isNotBlank()) {
+                            Text(
+                                text = order.description,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color.DarkGray
+                            )
+                        }
+                    }
+                }
+                
+                Text(
+                    text = "₱${order.price.toInt()}",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Black,
+                    color = Color(0xFF4A148C)
+                )
+            }
+            
+            Spacer(Modifier.height(12.dp))
+            HorizontalDivider(color = Color(0xFFCE93D8).copy(alpha = 0.5f))
+            Spacer(Modifier.height(8.dp))
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    if (order.customName.isNotBlank()) {
+                        Text(
+                            text = "Name: ${order.customName}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Black
+                        )
+                    }
+                    if (order.customNumber.isNotBlank()) {
+                        Text(
+                            text = "#${order.customNumber}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Black
+                        )
+                    }
+                    Text(
+                        text = "Size: ${order.size}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black
+                    )
+                }
+                
+                Row {
+                    IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
+                        Icon(Icons.Default.Edit, contentDescription = "Edit Order", tint = Color(0xFF7B1FA2), modifier = Modifier.size(18.dp))
+                    }
+                    IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
+                        Icon(Icons.Default.Delete, contentDescription = "Delete Order", tint = Color.Red, modifier = Modifier.size(18.dp))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun EmptyPaymentState() {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(top = 40.dp),
+        modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Surface(
-            modifier = Modifier.size(60.dp),
+            modifier = Modifier.size(50.dp),
             shape = RoundedCornerShape(12.dp),
             color = Color(0xFFFFF3E0),
             border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFFCC80))
         ) {
             Box(contentAlignment = Alignment.Center) {
-                Text("📋", fontSize = 32.sp)
+                Text("📋", fontSize = 24.sp)
             }
         }
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(8.dp))
         Text(
             text = "No payments recorded yet.",
-            style = MaterialTheme.typography.titleMedium,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
+@Composable
+fun EmptyClothingOrderState() {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Surface(
+            modifier = Modifier.size(50.dp),
+            shape = RoundedCornerShape(12.dp),
+            color = Color(0xFFF3E5F5),
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFCE93D8))
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Text("👕", fontSize = 24.sp)
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = "No clothing orders yet.",
+            style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Bold
         )
         Text(
-            text = "Use the + button to add a payment.",
-            style = MaterialTheme.typography.bodyMedium,
+            text = "Add jerseys, shirts, names, numbers & sizes.",
+            style = MaterialTheme.typography.bodySmall,
             color = Color.Gray
         )
     }

@@ -9,9 +9,8 @@ import kotlinx.serialization.Serializable
 data class Student(
     @PrimaryKey val id: String = "",
     val name: String = "",
-    val targetAmount: Double = 0.0,
     val addedAt: Long = System.currentTimeMillis()
 ) {
     // Default constructor for Firebase
-    constructor() : this("", "", 0.0, 0.0.toLong())
+    constructor() : this("", "", 0L)
 }

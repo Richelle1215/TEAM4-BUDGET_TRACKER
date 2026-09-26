@@ -242,9 +242,6 @@ fun StudentItemMatch(
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
-    val progress = if (item.student.targetAmount > 0) 
-        (item.totalPaid / item.student.targetAmount).toFloat().coerceIn(0f, 1f) else 0f
-    
     val statusColor = when (item.status) {
         StudentFilter.PAID -> Color(0xFF4CAF50)
         else -> Color(0xFFE53935)
@@ -265,32 +262,10 @@ fun StudentItemMatch(
         colors = CardDefaults.cardColors(
             containerColor = Color.White
         ),
-        border = androidx.compose.foundation.BorderStroke(
-            1.dp, 
-            if (item.isEarlyBird) Color(0xFFE68A00) else Color.LightGray.copy(alpha = 0.5f)
-        ),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.5f)),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Box {
-            // Early Bird Corner Badge
-            if (item.isEarlyBird) {
-                Surface(
-                    color = Color(0xFFE68A00),
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .clip(RoundedCornerShape(bottomStart = 12.dp, topEnd = 20.dp))
-                ) {
-                    Text(
-                        text = "EARLY BIRD",
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Black,
-                        color = Color.White,
-                        fontSize = 9.sp
-                    )
-                }
-            }
-
             Column(modifier = Modifier.padding(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     // Avatar
@@ -319,7 +294,7 @@ fun StudentItemMatch(
                             color = Color.Black
                         )
                         Text(
-                            text = "Target: ₱${String.format("%.0f", item.student.targetAmount)}",
+                            text = "Total Paid: ₱${String.format("%.0f", item.totalPaid)}",
                             style = MaterialTheme.typography.bodySmall,
                             color = Color.Gray
                         )
@@ -366,7 +341,7 @@ fun StudentItemMatch(
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = if (item.status == StudentFilter.PAID) "Paid in Full" else "Unpaid",
+                                text = if (item.status == StudentFilter.PAID) "Paid" else "Unpaid",
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = statusColor
@@ -374,41 +349,6 @@ fun StudentItemMatch(
                         }
                     }
                 }
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                // Progress Section
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    LinearProgressIndicator(
-                        progress = { progress },
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(10.dp)
-                            .clip(RoundedCornerShape(5.dp)),
-                        color = if (progress >= 1f) Color(0xFF1B5E20) else statusColor,
-                        trackColor = Color.LightGray.copy(alpha = 0.3f)
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        text = "${(progress * 100).toInt()}%",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Black,
-                        color = Color.Black
-                    )
-                }
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                val remaining = maxOf(0.0, item.student.targetAmount - item.totalPaid)
-                Text(
-                    text = buildString {
-                        append("₱${String.format("%.0f", item.totalPaid)} paid")
-                        if (remaining > 0) append(" • ₱${String.format("%.0f", remaining)} remaining")
-                    },
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.DarkGray
-                )
             }
         }
     }
