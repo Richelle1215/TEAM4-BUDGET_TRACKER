@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>TEAM 4 - Budget & Fund Tracker</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#1F4E78">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="TEAM 4">
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- jsPDF & AutoTable for PDF Export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: '#1F4E78',
+            brandDark: '#102A45',
+            accent: '#7B1FA2',
+            successBg: '#D4EDDA',
+            successText: '#155724',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
+    .pb-safe { padding-bottom: env(safe-area-inset-bottom, 20px); }
+  </style>
+</head>
+<body class="bg-gray-100 text-gray-900 min-h-screen flex flex-col">
+
+  <!-- Top Blue Header Banner -->
+  <header class="bg-brand text-white pt-10 pb-6 px-4 shadow-md sticky top-0 z-30">
+    <div class="max-w-md mx-auto flex items-center justify-between">
+      <div>
+        <h1 class="text-2xl font-black tracking-wide">TEAM 4</h1>
+        <p class="text-xs text-blue-200 font-medium">Budget & Fund Tracker</p>
+      </div>
+      <div id="syncBadge" class="flex items-center space-x-1 bg-white/20 px-3 py-1 rounded-full text-xs font-semibold">
+        <span class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
+        <span id="syncStatus">Live Cloud Sync</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Scrollable Container -->
+  <main class="flex-1 max-w-md mx-auto w-full px-4 pt-4 pb-24">
+
+    <!-- TAB 1: STUDENTS -->
+    <section id="tab-students" class="space-y-4">
+      <!-- Search & Filter Controls -->
+      <div class="bg-white p-3 rounded-2xl shadow-sm space-y-3">
+        <div class="relative w-full">
+          <input type="text" id="searchInput" placeholder="Search student name..."
+                 class="w-full bg-gray-100 border-0 rounded-xl pl-4 pr-10 py-2.5 text-sm focus:ring-2 focus:ring-brand outline-none">
+          <button id="clearSearchBtn" onclick="clearSearch()" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 font-bold text-sm p-1 hidden">
+            ✕
+          </button>
+        </div>
+
+        <div class="flex space-x-2">
+          <button id="filter-all" onclick="setFilter('ALL')" class="flex-1 py-1.5 rounded-xl text-xs font-bold bg-brand text-white transition">All</button>
+          <button id="filter-paid" onclick="setFilter('PAID')" class="flex-1 py-1.5 rounded-xl text-xs font-bold bg-gray-100 text-gray-600 hover:bg-gray-200 transition">Paid</button>
+          <button id="filter-unpaid" onclick="setFilter('UNPAID')" class="flex-1 py-1.5 rounded-xl text-xs font-bold bg-gray-100 text-gray-600 hover:bg-gray-200 transition">Unpaid</button>
+        </div>
+      </div>
+
+      <!-- Student Roster List -->
+      <div id="studentList" class="space-y-3">
+        <div class="text-center py-10 text-gray-400 text-sm">Loading students...</div>
+      </div>
+    </section>
+
+    <!-- TAB 2: EXPENSES -->
+    <section id="tab-expenses" class="space-y-4 hidden">
+      <!-- Summary Cards -->
+      <div class="grid grid-cols-2 gap-3">
+        <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+          <p class="text-xs text-gray-500 font-medium">Class Fund Collected</p>
+          <p id="expenseTotalCollected" class="text-xl font-black text-green-700 mt-1">₱0</p>
+        </div>
+        <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+          <p class="text-xs text-gray-500 font-medium">Total Expenses</p>
+          <p id="expenseTotalExpenses" class="text-xl font-black text-red-600 mt-1">₱0</p>
+        </div>
+      </div>
+
+      <div class="bg-gradient-to-r from-brand to-brandDark text-white p-4 rounded-2xl shadow-md flex items-center justify-between">
+        <div>
+          <p class="text-xs text-blue-200 uppercase tracking-wider font-semibold">Current Balance</p>
+          <p id="expenseCurrentBalance" class="text-2xl font-black mt-0.5">₱0</p>
+        </div>
+        <button onclick="openModal('addExpenseModal')" class="bg-white text-brand px-3 py-2 rounded-xl text-xs font-bold shadow hover:bg-blue-50">
+          + Add Expense
+        </button>
+      </div>
+
+      <!-- Expense Ledger Header -->
+      <div class="flex items-center justify-between pt-2">
+        <h3 class="font-bold text-gray-800 text-base">Expense Ledger</h3>
+      </div>
+
+      <div id="expenseList" class="space-y-2">
+        <div class="text-center py-8 text-gray-400 text-sm">Loading expenses...</div>
+      </div>
+    </section>
+
+    <!-- TAB 3: REPORTS -->
+    <section id="tab-reports" class="space-y-4 hidden">
+      <!-- Financial Summary Card -->
+      <div class="bg-white rounded-2xl shadow-sm p-4 space-y-3 border border-gray-100">
+        <h3 class="font-bold text-gray-900 text-base border-b pb-2">Financial Summary</h3>
+        <div class="space-y-2 text-sm">
+          <div class="flex justify-between">
+            <span class="text-gray-500">Total Collected (Budget)</span>
+            <span id="repTotalCollected" class="font-bold text-green-700">₱0</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-500">Total Clothing Orders</span>
+            <span id="repClothingTotal" class="font-bold text-purple-700">₱0</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-500">Total Expenses</span>
+            <span id="repTotalExpenses" class="font-bold text-red-600">₱0</span>
+          </div>
+          <div class="border-t pt-2 flex justify-between font-black text-base">
+            <span>Balance</span>
+            <span id="repBalance" class="text-brand">₱0</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Collection Status Cards -->
+      <div class="grid grid-cols-3 gap-2">
+        <div class="bg-green-50 p-3 rounded-2xl text-center border border-green-100">
+          <p id="statusPaidCount" class="text-xl font-black text-green-800">0</p>
+          <p class="text-xs text-green-600 font-semibold mt-0.5">Fully Paid</p>
+        </div>
+        <div class="bg-amber-50 p-3 rounded-2xl text-center border border-amber-100">
+          <p id="statusPartialCount" class="text-xl font-black text-amber-800">0</p>
+          <p class="text-xs text-amber-600 font-semibold mt-0.5">Partial</p>
+        </div>
+        <div class="bg-red-50 p-3 rounded-2xl text-center border border-red-100">
+          <p id="statusUnpaidCount" class="text-xl font-black text-red-800">0</p>
+          <p class="text-xs text-red-600 font-semibold mt-0.5">Unpaid</p>
+        </div>
+      </div>
+
+      <!-- Export Data Action Card -->
+      <div onclick="openModal('exportModal')" class="bg-white rounded-2xl shadow-sm p-4 space-y-1 border border-gray-100 flex items-center justify-between cursor-pointer hover:border-brand transition">
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-xl bg-blue-50 text-brand flex items-center justify-center font-bold text-lg">📄</div>
+          <div>
+            <h4 class="font-bold text-gray-900 text-sm">Export Report (PDF / Excel)</h4>
+            <p class="text-xs text-gray-400">Choose category and format</p>
+          </div>
+        </div>
+        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Bottom Navigation Bar -->
+  <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40 pb-safe shadow-lg">
+    <div class="max-w-md mx-auto flex justify-around py-2">
+      <button onclick="switchTab('students')" id="nav-students" class="flex flex-col items-center text-brand font-bold text-xs space-y-1">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+        <span>Students</span>
+      </button>
+      <button onclick="switchTab('expenses')" id="nav-expenses" class="flex flex-col items-center text-gray-400 font-semibold text-xs space-y-1">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <span>Expenses</span>
+      </button>
+      <button onclick="switchTab('reports')" id="nav-reports" class="flex flex-col items-center text-gray-400 font-semibold text-xs space-y-1">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 2v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 011.414.293l5.414 5.414a1 1 0 01.293 1.414V19a2 2 0 01-2 2z"/></svg>
+        <span>Reports</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- MODAL: STUDENT DETAIL SCREEN (FULLSCREEN OVERLAY MATCHING ANDROID) -->
+  <div id="studentDetailModal" class="fixed inset-0 bg-white z-50 overflow-y-auto hidden">
+    <!-- Dynamic Header -->
+    <div id="detailHeader" class="bg-green-700 text-white pt-6 pb-16 px-4 relative">
+      <div class="max-w-md mx-auto flex items-center justify-between">
+        <button onclick="closeModal('studentDetailModal')" class="flex items-center space-x-1 font-bold text-sm bg-white/20 px-3 py-1.5 rounded-xl">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+          <span>Back</span>
+        </button>
+      </div>
+
+      <!-- Avatar & Name -->
+      <div class="max-w-md mx-auto text-center mt-2 space-y-2">
+        <div id="detailAvatar" class="w-20 h-20 mx-auto rounded-full bg-white/20 flex items-center justify-center text-2xl font-bold tracking-wider">
+          MR
+        </div>
+        <h2 id="detailStudentName" class="text-xl font-bold">Student Name</h2>
+        <span id="detailStatusBadge" class="inline-block px-3 py-0.5 rounded-full text-xs font-bold bg-white/30">Paid</span>
+      </div>
+    </div>
+
+    <!-- Floating Progress Card -->
+    <div class="max-w-md mx-auto px-4 -mt-8 relative z-10">
+      <div class="bg-white p-4 rounded-3xl shadow-xl flex items-center justify-between border border-gray-100">
+        <span class="text-sm font-bold text-gray-800">Total Payments Made</span>
+        <span id="detailTotalPaid" class="text-lg font-black text-green-700">₱0</span>
+      </div>
+    </div>
+
+    <!-- Detail Body Content -->
+    <div class="max-w-md mx-auto px-4 pt-6 pb-20 space-y-6">
+
+      <!-- Payment History Section -->
+      <div class="space-y-3">
+        <div class="flex items-center justify-between">
+          <h3 class="font-bold text-gray-900 text-base">Payment History</h3>
+          <button id="detailAddPaymentBtn" class="bg-brand text-white px-3 py-1.5 rounded-xl text-xs font-bold shadow">
+            + Add Payment
+          </button>
+        </div>
+        <div id="detailPaymentsList" class="space-y-2">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <hr class="border-gray-200">
+
+      <!-- Clothing Orders Section -->
+      <div class="space-y-3">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="font-bold text-purple-900 text-base">Clothing Orders</h3>
+            <p class="text-xs text-gray-400">Jerseys, Shirts, Names & Numbers</p>
+          </div>
+          <button id="detailAddClothingBtn" class="bg-accent text-white px-3 py-1.5 rounded-xl text-xs font-bold shadow">
+            + Add Order
+          </button>
+        </div>
+        <div id="detailClothingList" class="space-y-3">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- MODAL: ADD PAYMENT -->
+  <div id="addPaymentModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-xl">
+      <h3 class="font-bold text-lg text-gray-900" id="paymentStudentName">Add Payment</h3>
+      <input type="hidden" id="paymentStudentId">
+      <div>
+        <label class="text-xs font-semibold text-gray-500">Amount (₱)</label>
+        <input type="number" id="paymentAmount" placeholder="e.g. 500" class="w-full mt-1 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-brand outline-none">
+      </div>
+      <div class="flex space-x-2 pt-2">
+        <button onclick="closeModal('addPaymentModal')" class="flex-1 py-2 rounded-xl text-xs font-bold bg-gray-100 text-gray-600">Cancel</button>
+        <button onclick="submitPayment()" class="flex-1 py-2 rounded-xl text-xs font-bold bg-brand text-white">Save Payment</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: ADD CLOTHING ORDER -->
+  <div id="addClothingModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-xl max-h-[90vh] overflow-y-auto">
+      <h3 class="font-bold text-lg text-gray-900" id="clothingStudentName">Add Clothing Order</h3>
+      <input type="hidden" id="clothingStudentId">
+      <div>
+        <label class="text-xs font-semibold text-gray-500">Item Type</label>
+        <input type="text" id="clothingItemType" value="Jersey" class="w-full mt-1 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-accent outline-none">
+      </div>
+      <div>
+        <label class="text-xs font-semibold text-gray-500">Name to Print</label>
+        <input type="text" id="clothingCustomName" placeholder="e.g. MENDEZ" class="w-full mt-1 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-accent outline-none">
+      </div>
+      <div>
+        <label class="text-xs font-semibold text-gray-500">Number to Print</label>
+        <input type="text" id="clothingCustomNumber" placeholder="e.g. 12" class="w-full mt-1 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-accent outline-none">
+      </div>
+      <div>
+        <label class="text-xs font-semibold text-gray-500">Size</label>
+        <input type="text" id="clothingSize" value="L" class="w-full mt-1 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-accent outline-none">
+      </div>
+      <div>
+        <label class="text-xs font-semibold text-gray-500">Price / Payment (₱)</label>
+        <input type="number" id="clothingPrice" placeholder="e.g. 500" class="w-full mt-1 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-accent outline-none">
+      </div>
+      <div class="flex space-x-2 pt-2">
+        <button onclick="closeModal('addClothingModal')" class="flex-1 py-2 rounded-xl text-xs font-bold bg-gray-100 text-gray-600">Cancel</button>
+        <button onclick="submitClothingOrder()" class="flex-1 py-2 rounded-xl text-xs font-bold bg-accent text-white">Save Order</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: ADD EXPENSE -->
+  <div id="addExpenseModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-xl">
+      <h3 class="font-bold text-lg text-gray-900">Add New Expense</h3>
+      <div>
+        <label class="text-xs font-semibold text-gray-500">Description</label>
+        <input type="text" id="expenseDescription" placeholder="e.g. Project Supplies" class="w-full mt-1 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-brand outline-none">
+      </div>
+      <div>
+        <label class="text-xs font-semibold text-gray-500">Amount (₱)</label>
+        <input type="number" id="expenseAmount" placeholder="e.g. 1500" class="w-full mt-1 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-brand outline-none">
+      </div>
+      <div class="flex space-x-2 pt-2">
+        <button onclick="closeModal('addExpenseModal')" class="flex-1 py-2 rounded-xl text-xs font-bold bg-gray-100 text-gray-600">Cancel</button>
+        <button onclick="submitExpense()" class="flex-1 py-2 rounded-xl text-xs font-bold bg-brand text-white">Save Expense</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: EXPORT OPTIONS -->
+  <div id="exportModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-xl">
+      <h3 class="font-bold text-lg text-gray-900">Export Report Options</h3>
+
+      <!-- Category Selection -->
+      <div class="space-y-2">
+        <label class="text-xs font-bold text-gray-700 uppercase tracking-wider">Report Category</label>
+        <div class="space-y-1.5 text-sm">
+          <label class="flex items-center space-x-2 p-1.5 rounded-lg hover:bg-gray-50 cursor-pointer">
+            <input type="radio" name="exportCategory" value="FULL_REPORT" checked class="text-brand focus:ring-brand">
+            <span>Full Comprehensive Report</span>
+          </label>
+          <label class="flex items-center space-x-2 p-1.5 rounded-lg hover:bg-gray-50 cursor-pointer">
+            <input type="radio" name="exportCategory" value="STUDENTS_PAYMENTS" class="text-brand focus:ring-brand">
+            <span>Students with Payments</span>
+          </label>
+          <label class="flex items-center space-x-2 p-1.5 rounded-lg hover:bg-gray-50 cursor-pointer">
+            <input type="radio" name="exportCategory" value="CLOTHING_ORDERS" class="text-brand focus:ring-brand">
+            <span>Clothing Orders</span>
+          </label>
+          <label class="flex items-center space-x-2 p-1.5 rounded-lg hover:bg-gray-50 cursor-pointer">
+            <input type="radio" name="exportCategory" value="EXPENSES_SUMMARY" class="text-brand focus:ring-brand">
+            <span>Expenses & Balance Summary</span>
+          </label>
+        </div>
+      </div>
+
+      <hr class="border-gray-200">
+
+      <!-- Format Selection -->
+      <div class="space-y-2">
+        <label class="text-xs font-bold text-gray-700 uppercase tracking-wider">File Format</label>
+        <div class="space-y-1.5 text-sm">
+          <label class="flex items-center space-x-2 p-1.5 rounded-lg hover:bg-gray-50 cursor-pointer">
+            <input type="radio" name="exportFormat" value="EXCEL" checked class="text-brand focus:ring-brand">
+            <span>Excel Spreadsheet (.xlsx)</span>
+          </label>
+          <label class="flex items-center space-x-2 p-1.5 rounded-lg hover:bg-gray-50 cursor-pointer">
+            <input type="radio" name="exportFormat" value="PDF" class="text-brand focus:ring-brand">
+            <span>PDF Document</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="flex space-x-2 pt-2">
+        <button onclick="closeModal('exportModal')" class="flex-1 py-2 rounded-xl text-xs font-bold bg-gray-100 text-gray-600">Cancel</button>
+        <button onclick="generateWebExport()" class="flex-1 py-2 rounded-xl text-xs font-bold bg-brand text-white">Export File</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase v10 App & Firestore Module Script -->
+  <script type="module" src="app.js"></script>
+</body>
+</html>
