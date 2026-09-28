@@ -1,0 +1,16 @@
+{
+  "short_name": "TEAM 4",
+  "name": "TEAM 4 Budget & Fund Tracker",
+  "icons": [
+    {
+      "src": "../app/src/main/res/drawable/app_icon.jpg",
+      "type": "image/jpeg",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "./index.html",
+  "background_color": "#1F4E78",
+  "theme_color": "#1F4E78",
+  "display": "standalone",
+  "orientation": "portrait"
+}
