@@ -106,6 +106,13 @@ fun StudentListScreen(
                             .height(56.dp),
                         placeholder = { Text("Search ${statusCounts.all} students...", color = Color.Gray) },
                         leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color.Gray) },
+                        trailingIcon = {
+                            if (searchQuery.isNotEmpty()) {
+                                IconButton(onClick = { viewModel.updateSearchQuery("") }) {
+                                    Icon(Icons.Default.Close, contentDescription = "Clear search", tint = Color.Gray)
+                                }
+                            }
+                        },
                         singleLine = true,
                         shape = RoundedCornerShape(28.dp),
                         colors = TextFieldDefaults.colors(
