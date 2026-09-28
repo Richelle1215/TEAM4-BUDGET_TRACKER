@@ -35,6 +35,7 @@ fun ExpenseScreen(
     var editingExpense by remember { mutableStateOf<Expense?>(null) }
 
     Scaffold(
+        containerColor = Color.White,
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { showAddDialog = true },
@@ -46,7 +47,12 @@ fun ExpenseScreen(
         },
         bottomBar = { Spacer(Modifier.windowInsetsPadding(WindowInsets.navigationBars)) }
     ) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(bottom = padding.calculateBottomPadding())) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.White)
+                .padding(bottom = padding.calculateBottomPadding())
+        ) {
             // Crimson Header
             Surface(
                 color = ErrorRedDeep,
@@ -62,11 +68,6 @@ fun ExpenseScreen(
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Black,
                         color = Color.White
-                    )
-                    Text(
-                        text = "Track class spending",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White.copy(alpha = 0.7f)
                     )
                     
                     Spacer(Modifier.height(24.dp))
