@@ -142,7 +142,9 @@ fun ImportExportScreen(
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
                 Column(modifier = Modifier.padding(vertical = 8.dp)) {
-                    SummaryRow("Total Collected", summary.totalCollected, SuccessGreenDeep)
+                    SummaryRow("Total Collected (Budget)", summary.totalCollected, SuccessGreenDeep)
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = Color.LightGray.copy(alpha = 0.3f))
+                    SummaryRow("Total Clothing Orders", summary.targetedCollection, Color(0xFF7B1FA2))
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = Color.LightGray.copy(alpha = 0.3f))
                     SummaryRow("Total Expenses", summary.totalExpenses, ErrorRedDeep)
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = Color.LightGray.copy(alpha = 0.3f))
