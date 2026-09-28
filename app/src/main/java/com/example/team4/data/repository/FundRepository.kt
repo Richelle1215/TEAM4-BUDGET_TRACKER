@@ -1,14 +1,17 @@
 package com.example.team4.data.repository
 
 import com.example.team4.data.local.FundDao
+import com.example.team4.data.model.ClothingOrder
 import com.example.team4.data.model.Expense
 import com.example.team4.data.model.Payment
 import com.example.team4.data.model.Student
 import com.example.team4.data.remote.FirestoreService
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -52,22 +55,29 @@ class FundRepository @Inject constructor(
     init {
         repositoryScope.launch {
             try {
-                // 1. Immediate Seeding (Local-First)
+                if (FirebaseAuth.getInstance().currentUser == null) {
+                    FirebaseAuth.getInstance().signInAnonymously().await()
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+        repositoryScope.launch {
+            try {
+                // 1. Immediate Seeding & Local Deduplication
                 val count = fundDao.getStudentCount().first()
                 if (count == 0) {
                     seedStudents()
                 } else {
-                    // Cleanup student "40" if exists
-                    fundDao.getAllStudents().first().find { it.name == "40" }?.let { badStudent ->
-                        deleteStudent(badStudent)
-                    }
+                    val allStudents = fundDao.getAllStudents().first()
+                    deduplicateStudents(allStudents)
                 }
 
-                // 2. Real-time Cloud Sync (Two-way)
-                // Firestore sync starting...
+                // 2. Real-time Cloud Sync with Deduplication
                 firestoreService.getStudents().collect { cloudStudents ->
                     if (cloudStudents.isNotEmpty()) {
                         cloudStudents.forEach { fundDao.insertStudent(it) }
+                        deduplicateStudents(cloudStudents)
                     }
                 }
             } catch (e: Exception) {
@@ -84,14 +94,61 @@ class FundRepository @Inject constructor(
                 expenses.forEach { fundDao.insertExpense(it) }
             }
         }
+        repositoryScope.launch {
+            firestoreService.getClothingOrders().collect { orders ->
+                orders.forEach { fundDao.insertClothingOrder(it) }
+            }
+        }
+    }
+
+    private suspend fun deduplicateStudents(students: List<Student>) {
+        val grouped = students.groupBy { it.name.trim().lowercase() }
+        val allPayments = fundDao.getAllPayments().first()
+        val allOrders = fundDao.getAllClothingOrders().first()
+
+        grouped.forEach { (_, studentGroup) ->
+            if (studentGroup.size > 1) {
+                // Find canonical student ID (prefer deterministic UUID if in DEFAULT_STUDENT_LIST)
+                val canonicalStudent = studentGroup.firstOrNull { s ->
+                    val expectedId = UUID.nameUUIDFromBytes(s.name.toByteArray()).toString()
+                    s.id == expectedId
+                } ?: studentGroup.first()
+
+                val duplicates = studentGroup.filter { it.id != canonicalStudent.id }
+
+                duplicates.forEach { dup ->
+                    // Re-link payments to canonical student
+                    allPayments.filter { it.studentId == dup.id }.forEach { p ->
+                        val updated = p.copy(studentId = canonicalStudent.id)
+                        fundDao.updatePayment(updated)
+                        try { firestoreService.savePayment(updated) } catch (e: Exception) {}
+                    }
+
+                    // Re-link clothing orders to canonical student
+                    allOrders.filter { it.studentId == dup.id }.forEach { o ->
+                        val updated = o.copy(studentId = canonicalStudent.id)
+                        fundDao.updateClothingOrder(updated)
+                        try { firestoreService.saveClothingOrder(updated) } catch (e: Exception) {}
+                    }
+
+                    // Delete duplicate student from local Room and cloud Firestore
+                    fundDao.deleteStudent(dup)
+                    try {
+                        firestoreService.deleteStudent(dup.id)
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+            }
+        }
     }
 
     private suspend fun seedStudents() {
         DEFAULT_STUDENT_LIST.forEach { name ->
+            val studentId = UUID.nameUUIDFromBytes(name.toByteArray()).toString()
             val student = Student(
-                id = UUID.randomUUID().toString(),
-                name = name,
-                targetAmount = 0.0
+                id = studentId,
+                name = name
             )
             // Insert to local database immediately so UI updates
             fundDao.insertStudent(student)
@@ -110,12 +167,50 @@ class FundRepository @Inject constructor(
     fun getStudents(): Flow<List<Student>> = fundDao.getAllStudents()
     fun getPayments(): Flow<List<Payment>> = fundDao.getAllPayments()
     fun getExpenses(): Flow<List<Expense>> = fundDao.getAllExpenses()
+    fun getClothingOrders(): Flow<List<ClothingOrder>> = fundDao.getAllClothingOrders()
+
+    suspend fun addClothingOrder(studentId: String, itemType: String, description: String, customName: String, customNumber: String, size: String, price: Double) {
+        val order = ClothingOrder(
+            id = UUID.randomUUID().toString(),
+            studentId = studentId,
+            itemType = itemType,
+            description = description,
+            customName = customName,
+            customNumber = customNumber,
+            size = size,
+            price = price,
+            date = System.currentTimeMillis()
+        )
+        fundDao.insertClothingOrder(order)
+        try {
+            firestoreService.saveClothingOrder(order)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    suspend fun updateClothingOrder(order: ClothingOrder) {
+        fundDao.updateClothingOrder(order)
+        try {
+            firestoreService.saveClothingOrder(order)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    suspend fun deleteClothingOrder(order: ClothingOrder) {
+        fundDao.deleteClothingOrder(order)
+        try {
+            firestoreService.deleteClothingOrder(order.id)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
 
     suspend fun addStudent(name: String) {
         val student = Student(
             id = UUID.randomUUID().toString(),
-            name = name,
-            targetAmount = 0.0 // To be assigned on first payment
+            name = name
         )
         // Insert to local Room immediately
         fundDao.insertStudent(student)
@@ -156,14 +251,6 @@ class FundRepository @Inject constructor(
 
     suspend fun addPayment(studentId: String, amount: Double, date: Long) {
         val student = fundDao.getStudentById(studentId) ?: return
-        
-        // Check if targetAmount is already set
-        if (student.targetAmount == 0.0) {
-            val paidStudentsCount = fundDao.getAllStudents().first().count { it.targetAmount > 0.0 }
-            val target = if (paidStudentsCount < 50) 600.0 else 650.0
-            updateStudent(student.copy(targetAmount = target))
-        }
-
         val payment = Payment(
             id = UUID.randomUUID().toString(),
             studentId = studentId,
@@ -241,18 +328,18 @@ class FundRepository @Inject constructor(
         return combine(
             getPayments(),
             getExpenses(),
-            getStudents()
-        ) { payments, expenses, students ->
+            getClothingOrders()
+        ) { payments, expenses, orders ->
             val totalCollected = payments.sumOf { it.amount }
             val totalExpenses = expenses.sumOf { it.amount }
             val balance = totalCollected - totalExpenses
-            val targetedCollection = students.sumOf { it.targetAmount }
+            val totalOrdersPrice = orders.sumOf { it.price }
             
             FinancialSummary(
                 totalCollected = totalCollected,
                 totalExpenses = totalExpenses,
                 balance = balance,
-                targetedCollection = targetedCollection
+                targetedCollection = totalOrdersPrice
             )
         }
     }

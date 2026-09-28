@@ -1,6 +1,7 @@
 package com.example.team4.data.local
 
 import androidx.room.*
+import com.example.team4.data.model.ClothingOrder
 import com.example.team4.data.model.Expense
 import com.example.team4.data.model.Payment
 import com.example.team4.data.model.Student
@@ -43,6 +44,18 @@ interface FundDao {
 
     @Update
     suspend fun updateExpense(expense: Expense)
+
+    @Query("SELECT * FROM clothing_orders")
+    fun getAllClothingOrders(): Flow<List<ClothingOrder>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertClothingOrder(order: ClothingOrder)
+
+    @Delete
+    suspend fun deleteClothingOrder(order: ClothingOrder)
+
+    @Update
+    suspend fun updateClothingOrder(order: ClothingOrder)
 
     @Query("SELECT COUNT(*) FROM students")
     fun getStudentCount(): Flow<Int>
