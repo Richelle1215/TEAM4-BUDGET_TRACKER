@@ -1,5 +1,6 @@
 package com.example.team4.data.remote
 
+import com.example.team4.data.model.ClothingOrder
 import com.example.team4.data.model.Expense
 import com.example.team4.data.model.Payment
 import com.example.team4.data.model.Student
@@ -50,5 +51,17 @@ class FirestoreService @Inject constructor(
 
     suspend fun deleteExpense(expenseId: String) {
         db.collection("expenses").document(expenseId).delete().await()
+    }
+
+    fun getClothingOrders(): Flow<List<ClothingOrder>> = db.collection("clothing_orders")
+        .snapshots()
+        .map { it.toObjects<ClothingOrder>() }
+
+    suspend fun saveClothingOrder(order: ClothingOrder) {
+        db.collection("clothing_orders").document(order.id).set(order).await()
+    }
+
+    suspend fun deleteClothingOrder(orderId: String) {
+        db.collection("clothing_orders").document(orderId).delete().await()
     }
 }
