@@ -123,7 +123,7 @@
             <span id="repTotalCollected" class="font-bold text-green-700">₱0</span>
           </div>
           <div class="flex justify-between">
-            <span class="text-gray-500">Total Clothing Orders</span>
+            <span class="text-gray-500">Total Order for Tshirt/Jersey</span>
             <span id="repClothingTotal" class="font-bold text-purple-700">₱0</span>
           </div>
           <div class="flex justify-between">
@@ -135,6 +135,18 @@
             <span id="repBalance" class="text-brand">₱0</span>
           </div>
         </div>
+      </div>
+
+      <!-- Tshirt/Jersey Orders Roster Card -->
+      <div onclick="openModal('clothingRosterModal')" class="bg-white rounded-2xl shadow-sm p-4 space-y-1 border border-gray-100 flex items-center justify-between cursor-pointer hover:border-purple-300 transition">
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-xl bg-purple-50 text-accent flex items-center justify-center font-bold text-lg">👕</div>
+          <div>
+            <h4 class="font-bold text-gray-900 text-sm">View Tshirt/Jersey Orders List</h4>
+            <p id="webClothingRosterSubtitle" class="text-xs text-gray-400">View students who availed</p>
+          </div>
+        </div>
+        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
       </div>
 
       <!-- Collection Status Cards -->
@@ -338,7 +350,7 @@
           </label>
           <label class="flex items-center space-x-2 p-1.5 rounded-lg hover:bg-gray-50 cursor-pointer">
             <input type="radio" name="exportCategory" value="CLOTHING_ORDERS" class="text-brand focus:ring-brand">
-            <span>Clothing Orders</span>
+            <span>Tshirt/Jersey Orders List</span>
           </label>
           <label class="flex items-center space-x-2 p-1.5 rounded-lg hover:bg-gray-50 cursor-pointer">
             <input type="radio" name="exportCategory" value="EXPENSES_SUMMARY" class="text-brand focus:ring-brand">
@@ -355,7 +367,7 @@
         <div class="space-y-1.5 text-sm">
           <label class="flex items-center space-x-2 p-1.5 rounded-lg hover:bg-gray-50 cursor-pointer">
             <input type="radio" name="exportFormat" value="EXCEL" checked class="text-brand focus:ring-brand">
-            <span>Excel Spreadsheet (.xlsx)</span>
+            <span>Excel Spreadsheet (.xls)</span>
           </label>
           <label class="flex items-center space-x-2 p-1.5 rounded-lg hover:bg-gray-50 cursor-pointer">
             <input type="radio" name="exportFormat" value="PDF" class="text-brand focus:ring-brand">
@@ -367,6 +379,25 @@
       <div class="flex space-x-2 pt-2">
         <button onclick="closeModal('exportModal')" class="flex-1 py-2 rounded-xl text-xs font-bold bg-gray-100 text-gray-600">Cancel</button>
         <button onclick="generateWebExport()" class="flex-1 py-2 rounded-xl text-xs font-bold bg-brand text-white">Export File</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: TSHIRT / JERSEY ORDERS ROSTER -->
+  <div id="clothingRosterModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-xl max-h-[85vh] flex flex-col">
+      <div class="flex items-center justify-between border-b pb-2">
+        <div>
+          <h3 class="font-bold text-lg text-gray-900">Tshirt/Jersey Orders List</h3>
+          <p id="clothingRosterCount" class="text-xs text-gray-500 font-medium">0 Availed</p>
+        </div>
+        <button onclick="closeModal('clothingRosterModal')" class="text-gray-400 hover:text-gray-600 font-bold p-1">✕</button>
+      </div>
+      <div id="clothingRosterList" class="flex-1 overflow-y-auto space-y-3 py-1">
+        <!-- Populated by JS -->
+      </div>
+      <div class="pt-2 border-t flex justify-end">
+        <button onclick="closeModal('clothingRosterModal')" class="w-full py-2 rounded-xl text-xs font-bold bg-gray-100 text-gray-600">Close</button>
       </div>
     </div>
   </div>
