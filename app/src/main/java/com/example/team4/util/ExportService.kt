@@ -149,7 +149,7 @@ class ExportService @Inject constructor(
                     <div class="section-header">FINANCIAL SUMMARY</div>
                     <table>
                       <tr><th>Total Collected (Budget)</th><td class="number bold">₱${totalColl.toInt()}</td></tr>
-                      <tr><th>Total Collected (Clothing Orders)</th><td class="number bold">₱${totalClothing.toInt()}</td></tr>
+                      <tr><th>Total Order for Tshirt/Jersey</th><td class="number bold">₱${totalClothing.toInt()}</td></tr>
                       <tr><th>Total Expenses</th><td class="number bold">₱${totalExp.toInt()}</td></tr>
                       <tr><th>Current Balance (Budget)</th><td class="number bold">₱${balance.toInt()}</td></tr>
                     </table>
@@ -246,7 +246,7 @@ class ExportService @Inject constructor(
                     <div class="section-header">FINANCIAL SUMMARY</div>
                     <table>
                       <tr><th>Total Collected (Budget)</th><td class="number bold">₱${totalColl.toInt()}</td></tr>
-                      <tr><th>Total Collected (Clothing Orders)</th><td class="number bold">₱${totalClothing.toInt()}</td></tr>
+                      <tr><th>Total Order for Tshirt/Jersey</th><td class="number bold">₱${totalClothing.toInt()}</td></tr>
                       <tr><th>Total Expenses</th><td class="number bold">₱${totalExp.toInt()}</td></tr>
                       <tr><th>Current Balance (Budget)</th><td class="number bold">₱${balance.toInt()}</td></tr>
                     </table>
@@ -430,7 +430,7 @@ class ExportService @Inject constructor(
                 textPaint.color = Color.parseColor("#2E7D32")
                 textPaint.textSize = 9.5f
                 textPaint.isFakeBoldText = true
-                canvas.drawText("Budget Collected: ₱${totalColl.toInt()}   |   Clothing Orders Total: ₱${totalClothing.toInt()}", 55f, y + 20f, textPaint)
+                canvas.drawText("Budget Collected: ₱${totalColl.toInt()}   |   Total Order for Tshirt/Jersey: ₱${totalClothing.toInt()}", 55f, y + 20f, textPaint)
                 canvas.drawText("Total Expenses: ₱${totalExp.toInt()}   |   Current Balance: ₱${balance.toInt()}", 55f, y + 38f, textPaint)
                 y += 65f
 
@@ -484,7 +484,7 @@ class ExportService @Inject constructor(
                 textPaint.color = Color.parseColor("#2E7D32")
                 textPaint.textSize = 9.5f
                 textPaint.isFakeBoldText = true
-                canvas.drawText("Budget Collected: ₱${totalColl.toInt()}   |   Clothing Orders Total: ₱${totalClothing.toInt()}", 55f, y + 20f, textPaint)
+                canvas.drawText("Budget Collected: ₱${totalColl.toInt()}   |   Total Order for Tshirt/Jersey: ₱${totalClothing.toInt()}", 55f, y + 20f, textPaint)
                 canvas.drawText("Total Expenses: ₱${totalExp.toInt()}   |   Current Balance: ₱${balance.toInt()}", 55f, y + 38f, textPaint)
                 y += 65f
 
