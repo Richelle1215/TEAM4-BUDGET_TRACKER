@@ -42,7 +42,7 @@ class FundRepository @Inject constructor(
             "Manarang Rhon Ruszell Marabe", "Marca Arvie", "Mendez Richelle Aguilar",
             "Molina Jade Cedrick Barcoma", "Nano Dennis Kyle Marzan", "Nava Mhyco Allen Kien",
             "Obligacion Reynalen Malabunga", "Oda CJ Coronel", "Paderes Bea Blanca Macandog",
-            "Pangilinan Richard Martin", "Pesebre Aeron Jay", "Quiñones James Kenneth Balon",
+            "Pangilinan Richard Martin", "Pesebre Aeron Jay", "Pimentel, Mikaela Joy", "Quiñones James Kenneth Balon",
             "Rafa Razel Ken Hernandez", "Rajas John Nicco Villeno", "Rogacion Rlezza Mae Omaga",
             "San Antonio Mary Ann", "Sanchez Leslie Faye", "Sarical Ella Bardon",
             "Simon Justine Michael Acula", "Suyat Rhoy Jayson", "Tacanay Neil Gaibbriel Tagala",
@@ -71,6 +71,17 @@ class FundRepository @Inject constructor(
                 } else {
                     val allStudents = fundDao.getAllStudents().first()
                     deduplicateStudents(allStudents)
+                    
+                    // Ensure all default students exist
+                    DEFAULT_STUDENT_LIST.forEach { name ->
+                        val studentId = UUID.nameUUIDFromBytes(name.toByteArray()).toString()
+                        val existing = fundDao.getStudentById(studentId)
+                        if (existing == null) {
+                            val student = Student(id = studentId, name = name)
+                            fundDao.insertStudent(student)
+                            try { firestoreService.saveStudent(student) } catch (e: Exception) {}
+                        }
+                    }
                 }
 
                 // 2. Real-time Cloud Sync with Deduplication
