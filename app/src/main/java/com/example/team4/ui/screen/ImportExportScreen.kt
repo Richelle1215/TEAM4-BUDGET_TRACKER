@@ -3,6 +3,8 @@ package com.example.team4.ui.screen
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -10,6 +12,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.PictureAsPdf
@@ -24,6 +27,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.team4.data.model.ClothingOrder
+import com.example.team4.data.model.Student
 import com.example.team4.ui.theme.*
 import com.example.team4.ui.viewmodel.DashboardViewModel
 import com.example.team4.ui.viewmodel.ExpenseViewModel
@@ -44,6 +49,7 @@ fun ImportExportScreen(
     val expenses by expenseViewModel.expenses.collectAsState()
     val clothingOrders by studentViewModel.clothingOrders.collectAsState()
     var showExportDialog by remember { mutableStateOf(false) }
+    var showTshirtListDialog by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -144,7 +150,7 @@ fun ImportExportScreen(
                 Column(modifier = Modifier.padding(vertical = 8.dp)) {
                     SummaryRow("Total Collected (Budget)", summary.totalCollected, SuccessGreenDeep)
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = Color.LightGray.copy(alpha = 0.3f))
-                    SummaryRow("Total Clothing Orders", summary.targetedCollection, Color(0xFF7B1FA2))
+                    SummaryRow("Total Order for Tshirt/Jersey", summary.targetedCollection, Color(0xFF7B1FA2))
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = Color.LightGray.copy(alpha = 0.3f))
                     SummaryRow("Total Expenses", summary.totalExpenses, ErrorRedDeep)
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = Color.LightGray.copy(alpha = 0.3f))
@@ -156,6 +162,15 @@ fun ImportExportScreen(
                     )
                 }
             }
+
+            // Tshirt / Jersey Orders Roster Action
+            Text("Tshirt/Jersey Orders", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = Color.Black)
+            ExportActionRow(
+                title = "View Tshirt/Jersey Orders List",
+                subtitle = "${clothingOrders.size} students availed (Total: ₱${clothingOrders.sumOf { it.price }.toInt()})",
+                icon = Icons.Default.CheckCircle,
+                onClick = { showTshirtListDialog = true }
+            )
 
             // Collection Status
             Text("Collection Status", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = Color.Black)
@@ -188,6 +203,84 @@ fun ImportExportScreen(
             }
         )
     }
+
+    if (showTshirtListDialog) {
+        TshirtOrdersListDialog(
+            clothingOrders = clothingOrders,
+            students = students,
+            onDismiss = { showTshirtListDialog = false },
+            onDeleteOrder = { order -> studentViewModel.deleteClothingOrder(order) }
+        )
+    }
+}
+
+@Composable
+fun TshirtOrdersListDialog(
+    clothingOrders: List<ClothingOrder>,
+    students: List<Student>,
+    onDismiss: () -> Unit,
+    onDeleteOrder: (ClothingOrder) -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Column {
+                Text("Tshirt/Jersey Orders List", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(
+                    "${clothingOrders.size} Availed • Total: ₱${clothingOrders.sumOf { it.price }.toInt()}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray
+                )
+            }
+        },
+        text = {
+            if (clothingOrders.isEmpty()) {
+                Text("No t-shirt or jersey orders recorded yet.", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 380.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(clothingOrders.sortedByDescending { it.date }) { order ->
+                        val studentName = students.find { it.id == order.studentId }?.name ?: order.customName
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFFF3E5F5))
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .padding(12.dp)
+                                    .fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(studentName, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium, color = Color(0xFF4A148C))
+                                    Text(
+                                        "${order.itemType} • Name: ${order.customName} #${order.customNumber} • Size: ${order.size}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = Color.DarkGray
+                                    )
+                                }
+                                Text("₱${order.price.toInt()}", fontWeight = FontWeight.Black, color = Color(0xFF4A148C))
+                                IconButton(onClick = { onDeleteOrder(order) }, modifier = Modifier.size(28.dp)) {
+                                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Red, modifier = Modifier.size(16.dp))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Close")
+            }
+        }
+    )
 }
 
 @Composable
