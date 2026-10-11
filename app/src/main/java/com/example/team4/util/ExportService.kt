@@ -5,7 +5,6 @@ import android.content.Intent
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
-import android.graphics.RectF
 import android.graphics.pdf.PdfDocument
 import androidx.core.content.FileProvider
 import com.example.team4.data.model.ClothingOrder
@@ -68,6 +67,9 @@ class ExportService @Inject constructor(
               .col-payment { min-width: 140px; text-align: right; }
               tr.paid { background-color: #D4EDDA; font-weight: bold; color: #155724; }
               tr.unpaid { background-color: #FFFFFF; }
+              tr.footer-success { background-color: #D4EDDA; font-weight: bold; color: #155724; }
+              tr.footer-danger { background-color: #FFEBEE; font-weight: bold; color: #C62828; }
+              tr.footer-purple { background-color: #F3E5F5; font-weight: bold; color: #4A148C; }
               .number { text-align: right; }
               .bold { font-weight: bold; }
             </style>
@@ -78,10 +80,18 @@ class ExportService @Inject constructor(
         """.trimIndent())
 
         val sortedStudents = students.sortedBy { it.name }
+        val sortedExpenses = expenses.sortedBy { it.date }
+
+        val totalColl = payments.sumOf { it.amount }
+        val totalClothing = clothingOrders.sumOf { it.price }
+        val totalExp = expenses.sumOf { it.amount }
+        val balance = totalColl - totalExp
+        val unpaidStudentsCount = sortedStudents.count { s -> payments.none { it.studentId == s.id && it.amount > 0.0 } }
 
         when (reportType) {
             ReportType.STUDENTS_PAYMENTS -> {
                 htmlBuilder.append("""
+                    <div class="section-header">STUDENTS & PAYMENTS</div>
                     <table>
                       <thead>
                         <tr>
@@ -95,7 +105,7 @@ class ExportService @Inject constructor(
                 sortedStudents.forEach { s ->
                     val paid = payments.filter { it.studentId == s.id }.sumOf { it.amount }
                     val rowClass = if (paid > 0.0) "paid" else "unpaid"
-                    val paymentText = if (paid > 0.0) "${paid.toInt()}" else ""
+                    val paymentText = if (paid > 0.0) "${paid.toInt()}" else "Unpaid"
                     htmlBuilder.append("""
                         <tr class="$rowClass">
                           <td>${s.name}</td>
@@ -103,12 +113,25 @@ class ExportService @Inject constructor(
                         </tr>
                     """.trimIndent())
                 }
-                htmlBuilder.append("</tbody></table>")
+                htmlBuilder.append("""
+                      </tbody>
+                      <tfoot>
+                        <tr class="footer-success">
+                          <td>TOTAL COLLECTED</td>
+                          <td class="number">₱${totalColl.toInt()}</td>
+                        </tr>
+                        <tr class="footer-danger">
+                          <td>UNPAID STUDENTS (Hindi pa nagbabayad)</td>
+                          <td class="number">${unpaidStudentsCount} student(s)</td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                """.trimIndent())
             }
 
             ReportType.CLOTHING_ORDERS -> {
                 htmlBuilder.append("""
-                    <div class="section-header">Clothing Orders</div>
+                    <div class="section-header">CLOTHING ORDERS</div>
                     <table>
                       <thead>
                         <tr>
@@ -132,27 +155,24 @@ class ExportService @Inject constructor(
                           <td>${o.customName}</td>
                           <td>${o.customNumber}</td>
                           <td>${o.size}</td>
-                          <td class="number">${o.price.toInt()}</td>
+                          <td class="number">₱${o.price.toInt()}</td>
                         </tr>
                     """.trimIndent())
                 }
-                htmlBuilder.append("</tbody></table>")
+                htmlBuilder.append("""
+                      </tbody>
+                      <tfoot>
+                        <tr class="footer-purple">
+                          <td colspan="5">TOTAL CLOTHING ORDERS</td>
+                          <td class="number">₱${totalClothing.toInt()}</td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                """.trimIndent())
             }
 
             ReportType.EXPENSES_SUMMARY -> {
-                val totalColl = payments.sumOf { it.amount }
-                val totalClothing = clothingOrders.sumOf { it.price }
-                val totalExp = expenses.sumOf { it.amount }
-                val balance = totalColl - totalExp
-
                 htmlBuilder.append("""
-                    <div class="section-header">FINANCIAL SUMMARY</div>
-                    <table>
-                      <tr><th>Total Collected (Budget)</th><td class="number bold">₱${totalColl.toInt()}</td></tr>
-                      <tr><th>Total Order for Tshirt/Jersey</th><td class="number bold">₱${totalClothing.toInt()}</td></tr>
-                      <tr><th>Total Expenses</th><td class="number bold">₱${totalExp.toInt()}</td></tr>
-                      <tr><th>Current Balance (Budget)</th><td class="number bold">₱${balance.toInt()}</td></tr>
-                    </table>
                     <div class="section-header">EXPENSES</div>
                     <table>
                       <thead>
@@ -165,7 +185,7 @@ class ExportService @Inject constructor(
                       <tbody>
                 """.trimIndent())
 
-                expenses.forEach { e ->
+                sortedExpenses.forEach { e ->
                     htmlBuilder.append("""
                         <tr>
                           <td>${dateFormat.format(Date(e.date))}</td>
@@ -174,7 +194,39 @@ class ExportService @Inject constructor(
                         </tr>
                     """.trimIndent())
                 }
-                htmlBuilder.append("</tbody></table>")
+                htmlBuilder.append("""
+                      </tbody>
+                      <tfoot>
+                        <tr class="footer-danger">
+                          <td colspan="2">TOTAL EXPENSES</td>
+                          <td class="number">₱${totalExp.toInt()}</td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                    <div class="section-header">NET FINANCIAL SUMMARY</div>
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>FINANCIAL CATEGORY</th>
+                          <th class="number">AMOUNT</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td>Total Collected from Students</td>
+                          <td class="number bold" style="color: #155724;">₱${totalColl.toInt()}</td>
+                        </tr>
+                        <tr>
+                          <td>Total Expenses</td>
+                          <td class="number bold" style="color: #C62828;">₱${totalExp.toInt()}</td>
+                        </tr>
+                        <tr class="footer-success">
+                          <td>NET REMAINING BALANCE (Total Collected - Expenses)</td>
+                          <td class="number bold">₱${balance.toInt()}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                """.trimIndent())
             }
 
             ReportType.FULL_REPORT -> {
@@ -194,7 +246,7 @@ class ExportService @Inject constructor(
                 sortedStudents.forEach { s ->
                     val paid = payments.filter { it.studentId == s.id }.sumOf { it.amount }
                     val rowClass = if (paid > 0.0) "paid" else "unpaid"
-                    val paymentText = if (paid > 0.0) "${paid.toInt()}" else ""
+                    val paymentText = if (paid > 0.0) "${paid.toInt()}" else "Unpaid"
                     htmlBuilder.append("""
                         <tr class="$rowClass">
                           <td>${s.name}</td>
@@ -202,7 +254,20 @@ class ExportService @Inject constructor(
                         </tr>
                     """.trimIndent())
                 }
-                htmlBuilder.append("</tbody></table>")
+                htmlBuilder.append("""
+                      </tbody>
+                      <tfoot>
+                        <tr class="footer-success">
+                          <td>TOTAL COLLECTED</td>
+                          <td class="number">₱${totalColl.toInt()}</td>
+                        </tr>
+                        <tr class="footer-danger">
+                          <td>UNPAID STUDENTS (Hindi pa nagbabayad)</td>
+                          <td class="number">${unpaidStudentsCount} student(s)</td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                """.trimIndent())
 
                 // 2. Clothing Orders Section
                 htmlBuilder.append("""
@@ -234,22 +299,19 @@ class ExportService @Inject constructor(
                         </tr>
                     """.trimIndent())
                 }
-                htmlBuilder.append("</tbody></table>")
-
-                // 3. Expenses & Financial Summary Section
-                val totalColl = payments.sumOf { it.amount }
-                val totalClothing = clothingOrders.sumOf { it.price }
-                val totalExp = expenses.sumOf { it.amount }
-                val balance = totalColl - totalExp
-
                 htmlBuilder.append("""
-                    <div class="section-header">FINANCIAL SUMMARY</div>
-                    <table>
-                      <tr><th>Total Collected (Budget)</th><td class="number bold">₱${totalColl.toInt()}</td></tr>
-                      <tr><th>Total Order for Tshirt/Jersey</th><td class="number bold">₱${totalClothing.toInt()}</td></tr>
-                      <tr><th>Total Expenses</th><td class="number bold">₱${totalExp.toInt()}</td></tr>
-                      <tr><th>Current Balance (Budget)</th><td class="number bold">₱${balance.toInt()}</td></tr>
+                      </tbody>
+                      <tfoot>
+                        <tr class="footer-purple">
+                          <td colspan="5">TOTAL CLOTHING ORDERS</td>
+                          <td class="number">₱${totalClothing.toInt()}</td>
+                        </tr>
+                      </tfoot>
                     </table>
+                """.trimIndent())
+
+                // 3. Expenses Section
+                htmlBuilder.append("""
                     <div class="section-header">EXPENSES</div>
                     <table>
                       <thead>
@@ -262,7 +324,7 @@ class ExportService @Inject constructor(
                       <tbody>
                 """.trimIndent())
 
-                expenses.forEach { e ->
+                sortedExpenses.forEach { e ->
                     htmlBuilder.append("""
                         <tr>
                           <td>${dateFormat.format(Date(e.date))}</td>
@@ -271,7 +333,43 @@ class ExportService @Inject constructor(
                         </tr>
                     """.trimIndent())
                 }
-                htmlBuilder.append("</tbody></table>")
+                htmlBuilder.append("""
+                      </tbody>
+                      <tfoot>
+                        <tr class="footer-danger">
+                          <td colspan="2">TOTAL EXPENSES</td>
+                          <td class="number">₱${totalExp.toInt()}</td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                    <div class="section-header">NET FINANCIAL SUMMARY</div>
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>FINANCIAL CATEGORY</th>
+                          <th class="number">AMOUNT</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td>Total Collected from Students</td>
+                          <td class="number bold" style="color: #155724;">₱${totalColl.toInt()}</td>
+                        </tr>
+                        <tr>
+                          <td>Total Order for Tshirt/Jersey</td>
+                          <td class="number bold" style="color: #4A148C;">₱${totalClothing.toInt()}</td>
+                        </tr>
+                        <tr>
+                          <td>Total Expenses</td>
+                          <td class="number bold" style="color: #C62828;">₱${totalExp.toInt()}</td>
+                        </tr>
+                        <tr class="footer-success">
+                          <td>NET REMAINING BALANCE (Total Collected - Expenses)</td>
+                          <td class="number bold">₱${balance.toInt()}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                """.trimIndent())
             }
         }
 
@@ -331,6 +429,13 @@ class ExportService @Inject constructor(
         y = 80f
 
         val sortedStudents = students.sortedBy { it.name }
+        val sortedExpenses = expenses.sortedBy { it.date }
+
+        val totalColl = payments.sumOf { it.amount }
+        val totalClothing = clothingOrders.sumOf { it.price }
+        val totalExp = expenses.sumOf { it.amount }
+        val balance = totalColl - totalExp
+        val unpaidStudentsCount = sortedStudents.count { s -> payments.none { it.studentId == s.id && it.amount > 0.0 } }
 
         fun drawTableHeader(headers: List<String>, colWidths: List<Float>, startX: Float = 40f) {
             checkSpace(30f)
@@ -360,18 +465,23 @@ class ExportService @Inject constructor(
             values: List<String>,
             colWidths: List<Float>,
             isPaid: Boolean = false,
+            bgColor: Int? = null,
+            textColor: Int? = null,
+            isBold: Boolean = false,
             startX: Float = 40f
         ) {
             checkSpace(24f)
             val totalWidth = colWidths.sum()
 
-            // Row background fill
-            fillPaint.color = if (isPaid) Color.parseColor("#D4EDDA") else Color.WHITE
+            val actualBgColor = bgColor ?: if (isPaid) Color.parseColor("#D4EDDA") else Color.WHITE
+            val actualTextColor = textColor ?: if (isPaid) Color.parseColor("#155724") else Color.BLACK
+
+            fillPaint.color = actualBgColor
             canvas.drawRect(startX, y, startX + totalWidth, y + 22f, fillPaint)
 
-            textPaint.color = if (isPaid) Color.parseColor("#155724") else Color.BLACK
+            textPaint.color = actualTextColor
             textPaint.textSize = 9.5f
-            textPaint.isFakeBoldText = isPaid
+            textPaint.isFakeBoldText = isBold || isPaid
 
             var currentX = startX
             values.forEachIndexed { idx, value ->
@@ -380,7 +490,6 @@ class ExportService @Inject constructor(
                 // Draw vertical grid line
                 canvas.drawRect(currentX, y, currentX + width, y + 22f, strokePaint)
                 
-                // Truncate long text if necessary
                 val maxChars = (width / 6f).toInt().coerceAtLeast(5)
                 val displayText = if (value.length > maxChars) value.take(maxChars - 2) + ".." else value
 
@@ -389,6 +498,37 @@ class ExportService @Inject constructor(
             }
 
             y += 22f
+        }
+
+        fun drawNetSummaryTable(startX: Float = 40f) {
+            checkSpace(110f)
+            drawTableHeader(listOf("NET FINANCIAL SUMMARY", "AMOUNT"), listOf(380f, 135f), startX)
+            drawTableRow(
+                listOf("Total Collected from Students", "₱${totalColl.toInt()}"),
+                listOf(380f, 135f),
+                textColor = Color.parseColor("#155724"),
+                startX = startX
+            )
+            drawTableRow(
+                listOf("Total Order for Tshirt/Jersey", "₱${totalClothing.toInt()}"),
+                listOf(380f, 135f),
+                textColor = Color.parseColor("#4A148C"),
+                startX = startX
+            )
+            drawTableRow(
+                listOf("Total Expenses", "₱${totalExp.toInt()}"),
+                listOf(380f, 135f),
+                textColor = Color.parseColor("#C62828"),
+                startX = startX
+            )
+            drawTableRow(
+                listOf("NET REMAINING BALANCE (Collected - Expenses)", "₱${balance.toInt()}"),
+                listOf(380f, 135f),
+                bgColor = Color.parseColor("#E8F5E9"),
+                textColor = Color.parseColor("#2E7D32"),
+                isBold = true,
+                startX = startX
+            )
         }
 
         when (reportType) {
@@ -400,6 +540,20 @@ class ExportService @Inject constructor(
                     val paymentText = if (isPaid) "₱${paid.toInt()}" else "Unpaid"
                     drawTableRow(listOf(s.name, paymentText), listOf(380f, 135f), isPaid = isPaid)
                 }
+                drawTableRow(
+                    listOf("TOTAL COLLECTED", "₱${totalColl.toInt()}"),
+                    listOf(380f, 135f),
+                    bgColor = Color.parseColor("#D4EDDA"),
+                    textColor = Color.parseColor("#155724"),
+                    isBold = true
+                )
+                drawTableRow(
+                    listOf("UNPAID STUDENTS (Hindi pa nagbabayad)", "${unpaidStudentsCount} student(s)"),
+                    listOf(380f, 135f),
+                    bgColor = Color.parseColor("#FFEBEE"),
+                    textColor = Color.parseColor("#C62828"),
+                    isBold = true
+                )
             }
 
             ReportType.CLOTHING_ORDERS -> {
@@ -414,33 +568,32 @@ class ExportService @Inject constructor(
                         listOf(130f, 65f, 110f, 85f, 50f, 75f)
                     )
                 }
+                drawTableRow(
+                    listOf("TOTAL CLOTHING ORDERS", "", "", "", "", "₱${totalClothing.toInt()}"),
+                    listOf(130f, 65f, 110f, 85f, 50f, 75f),
+                    bgColor = Color.parseColor("#F3E5F5"),
+                    textColor = Color.parseColor("#4A148C"),
+                    isBold = true
+                )
             }
 
             ReportType.EXPENSES_SUMMARY -> {
-                val totalColl = payments.sumOf { it.amount }
-                val totalClothing = clothingOrders.sumOf { it.price }
-                val totalExp = expenses.sumOf { it.amount }
-                val balance = totalColl - totalExp
-
-                // Balance summary box
-                checkSpace(55f)
-                fillPaint.color = Color.parseColor("#E8F5E9")
-                canvas.drawRoundRect(RectF(40f, y, 555f, y + 50f), 8f, 8f, fillPaint)
-
-                textPaint.color = Color.parseColor("#2E7D32")
-                textPaint.textSize = 9.5f
-                textPaint.isFakeBoldText = true
-                canvas.drawText("Budget Collected: ₱${totalColl.toInt()}   |   Total Order for Tshirt/Jersey: ₱${totalClothing.toInt()}", 55f, y + 20f, textPaint)
-                canvas.drawText("Total Expenses: ₱${totalExp.toInt()}   |   Current Balance: ₱${balance.toInt()}", 55f, y + 38f, textPaint)
-                y += 65f
-
                 drawTableHeader(listOf("DATE", "DESCRIPTION/CATEGORY", "AMOUNT"), listOf(110f, 285f, 120f))
-                expenses.forEach { e ->
+                sortedExpenses.forEach { e ->
                     drawTableRow(
                         listOf(dateFormat.format(Date(e.date)), e.description, "₱${e.amount.toInt()}"),
                         listOf(110f, 285f, 120f)
                     )
                 }
+                drawTableRow(
+                    listOf("TOTAL EXPENSES", "", "₱${totalExp.toInt()}"),
+                    listOf(110f, 285f, 120f),
+                    bgColor = Color.parseColor("#FFEBEE"),
+                    textColor = Color.parseColor("#C62828"),
+                    isBold = true
+                )
+                y += 20f
+                drawNetSummaryTable()
             }
 
             ReportType.FULL_REPORT -> {
@@ -452,6 +605,20 @@ class ExportService @Inject constructor(
                     val paymentText = if (isPaid) "₱${paid.toInt()}" else "Unpaid"
                     drawTableRow(listOf(s.name, paymentText), listOf(380f, 135f), isPaid = isPaid)
                 }
+                drawTableRow(
+                    listOf("TOTAL COLLECTED", "₱${totalColl.toInt()}"),
+                    listOf(380f, 135f),
+                    bgColor = Color.parseColor("#D4EDDA"),
+                    textColor = Color.parseColor("#155724"),
+                    isBold = true
+                )
+                drawTableRow(
+                    listOf("UNPAID STUDENTS (Hindi pa nagbabayad)", "${unpaidStudentsCount} student(s)"),
+                    listOf(380f, 135f),
+                    bgColor = Color.parseColor("#FFEBEE"),
+                    textColor = Color.parseColor("#C62828"),
+                    isBold = true
+                )
 
                 y += 20f
                 checkSpace(60f)
@@ -468,33 +635,35 @@ class ExportService @Inject constructor(
                         listOf(130f, 65f, 110f, 85f, 50f, 75f)
                     )
                 }
+                drawTableRow(
+                    listOf("TOTAL CLOTHING ORDERS", "", "", "", "", "₱${totalClothing.toInt()}"),
+                    listOf(130f, 65f, 110f, 85f, 50f, 75f),
+                    bgColor = Color.parseColor("#F3E5F5"),
+                    textColor = Color.parseColor("#4A148C"),
+                    isBold = true
+                )
 
                 y += 20f
                 checkSpace(60f)
 
-                // 3. Expenses & Balance Section
-                val totalColl = payments.sumOf { it.amount }
-                val totalClothing = clothingOrders.sumOf { it.price }
-                val totalExp = expenses.sumOf { it.amount }
-                val balance = totalColl - totalExp
-
-                fillPaint.color = Color.parseColor("#E8F5E9")
-                canvas.drawRoundRect(RectF(40f, y, 555f, y + 50f), 8f, 8f, fillPaint)
-
-                textPaint.color = Color.parseColor("#2E7D32")
-                textPaint.textSize = 9.5f
-                textPaint.isFakeBoldText = true
-                canvas.drawText("Budget Collected: ₱${totalColl.toInt()}   |   Total Order for Tshirt/Jersey: ₱${totalClothing.toInt()}", 55f, y + 20f, textPaint)
-                canvas.drawText("Total Expenses: ₱${totalExp.toInt()}   |   Current Balance: ₱${balance.toInt()}", 55f, y + 38f, textPaint)
-                y += 65f
-
+                // 3. Expenses Section
                 drawTableHeader(listOf("DATE", "DESCRIPTION/CATEGORY", "AMOUNT"), listOf(110f, 285f, 120f))
-                expenses.forEach { e ->
+                sortedExpenses.forEach { e ->
                     drawTableRow(
                         listOf(dateFormat.format(Date(e.date)), e.description, "₱${e.amount.toInt()}"),
                         listOf(110f, 285f, 120f)
                     )
                 }
+                drawTableRow(
+                    listOf("TOTAL EXPENSES", "", "₱${totalExp.toInt()}"),
+                    listOf(110f, 285f, 120f),
+                    bgColor = Color.parseColor("#FFEBEE"),
+                    textColor = Color.parseColor("#C62828"),
+                    isBold = true
+                )
+
+                y += 20f
+                drawNetSummaryTable()
             }
         }
 
