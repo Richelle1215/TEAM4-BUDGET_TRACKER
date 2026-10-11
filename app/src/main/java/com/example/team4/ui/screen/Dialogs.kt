@@ -280,7 +280,7 @@ fun EditClothingOrderDialog(
 
 enum class ReportType(val title: String) {
     STUDENTS_PAYMENTS("Students with Payments"),
-    CLOTHING_ORDERS("Clothing Orders (Shirts & Jerseys)"),
+    CLOTHING_ORDERS("Tshirt/Jersey Orders List"),
     EXPENSES_SUMMARY("Expenses & Balance Summary"),
     FULL_REPORT("Full Comprehensive Report")
 }
