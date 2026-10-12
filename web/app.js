@@ -539,11 +539,19 @@ window.generateWebExport = function() {
 
 function generateExcelExport(category) {
   const dateStr = new Date().toISOString().split('T')[0];
-  const sortedStudents = [...state.students].sort((a, b) => a.name.localeCompare(b.name));
+  const regularStudents = [...state.students].filter(s => !(s.name || '').toLowerCase().includes('borrow funds')).sort((a, b) => a.name.localeCompare(b.name));
+  const borrowStudent = state.students.find(s => (s.name || '').toLowerCase().includes('borrow funds'));
+  const sortedStudents = borrowStudent ? [...regularStudents, borrowStudent] : regularStudents;
+  const sortedExpenses = [...state.expenses].sort((a, b) => (a.date || 0) - (b.date || 0));
+
   const totalColl = state.payments.reduce((sum, p) => sum + (p.amount || 0), 0);
   const clothingTotal = state.clothingOrders.reduce((sum, o) => sum + (o.price || 0), 0);
   const totalExp = state.expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
   const balance = totalColl - totalExp;
+  const unpaidStudentsCount = regularStudents.filter(s => {
+    const paid = state.payments.filter(p => p.studentId === s.id).reduce((sum, p) => sum + (p.amount || 0), 0);
+    return paid <= 0;
+  }).length;
 
   let html = `
     <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
@@ -561,6 +569,10 @@ function generateExcelExport(category) {
       .col-payment { min-width: 140px; text-align: right; }
       tr.paid { background-color: #D4EDDA; font-weight: bold; color: #155724; }
       tr.unpaid { background-color: #FFFFFF; }
+      tr.borrow-funds { background-color: #FFE0B2; font-weight: bold; color: #E65100; }
+      tr.footer-success { background-color: #D4EDDA; font-weight: bold; color: #155724; }
+      tr.footer-danger { background-color: #FFEBEE; font-weight: bold; color: #C62828; }
+      tr.footer-purple { background-color: #F3E5F5; font-weight: bold; color: #4A148C; }
       .number { text-align: right; }
       .bold { font-weight: bold; }
     </style>
@@ -578,12 +590,20 @@ function generateExcelExport(category) {
         <tbody>
     `;
     sortedStudents.forEach(s => {
+      const isBorrow = (s.name || '').toLowerCase().includes('borrow funds');
       const paid = state.payments.filter(p => p.studentId === s.id).reduce((sum, p) => sum + (p.amount || 0), 0);
       const isPaid = paid > 0;
-      const rowClass = isPaid ? 'paid' : 'unpaid';
-      html += `<tr class="${rowClass}"><td>${s.name}</td><td class="number">${isPaid ? paid : ''}</td></tr>`;
+      const rowClass = isBorrow ? 'borrow-funds' : (isPaid ? 'paid' : 'unpaid');
+      html += `<tr class="${rowClass}"><td>${s.name}</td><td class="number">${isPaid ? paid : 'Unpaid'}</td></tr>`;
     });
-    html += `</tbody></table>`;
+    html += `
+        </tbody>
+        <tfoot>
+          <tr class="footer-success"><td>TOTAL COLLECTED</td><td class="number">₱${totalColl}</td></tr>
+          <tr class="footer-danger"><td>UNPAID STUDENTS (Hindi pa nagbabayad)</td><td class="number">${unpaidStudentsCount} student(s)</td></tr>
+        </tfoot>
+      </table>
+    `;
   }
 
   if (category === 'FULL_REPORT' || category === 'CLOTHING_ORDERS') {
@@ -597,28 +617,43 @@ function generateExcelExport(category) {
       const studentName = (state.students.find(s => s.id === o.studentId) || {}).name || o.customName || '';
       html += `<tr><td>${studentName}</td><td>${o.itemType || 'Jersey'}</td><td>${o.customName || ''}</td><td>${o.customNumber || ''}</td><td>${o.size || 'L'}</td><td class="number">₱${o.price || 0}</td></tr>`;
     });
-    html += `</tbody></table>`;
+    html += `
+        </tbody>
+        <tfoot>
+          <tr class="footer-purple"><td colspan="5">TOTAL CLOTHING ORDERS</td><td class="number">₱${clothingTotal}</td></tr>
+        </tfoot>
+      </table>
+    `;
   }
 
   if (category === 'FULL_REPORT' || category === 'EXPENSES_SUMMARY') {
     html += `
-      <div class="section-header">FINANCIAL SUMMARY</div>
-      <table>
-        <tr><th>Total Collected (Budget)</th><td class="number bold">₱${totalColl}</td></tr>
-        <tr><th>Total Collected (Clothing Orders)</th><td class="number bold">₱${clothingTotal}</td></tr>
-        <tr><th>Total Expenses</th><td class="number bold">₱${totalExp}</td></tr>
-        <tr><th>Current Balance (Budget)</th><td class="number bold">₱${balance}</td></tr>
-      </table>
       <div class="section-header">EXPENSES</div>
       <table>
         <thead><tr><th>DATE</th><th>DESCRIPTION/CATEGORY</th><th class="number">AMOUNT</th></tr></thead>
         <tbody>
     `;
-    state.expenses.forEach(e => {
+    sortedExpenses.forEach(e => {
       const d = e.date ? new Date(e.date).toLocaleDateString() : dateStr;
       html += `<tr><td>${d}</td><td>${e.description || ''}</td><td class="number">₱${e.amount || 0}</td></tr>`;
     });
-    html += `</tbody></table>`;
+    html += `
+        </tbody>
+        <tfoot>
+          <tr class="footer-danger"><td colspan="2">TOTAL EXPENSES</td><td class="number">₱${totalExp}</td></tr>
+        </tfoot>
+      </table>
+      <div class="section-header">NET FINANCIAL SUMMARY</div>
+      <table>
+        <thead><tr><th>FINANCIAL CATEGORY</th><th class="number">AMOUNT</th></tr></thead>
+        <tbody>
+          <tr><td>Total Collected from Students</td><td class="number bold" style="color: #155724;">₱${totalColl}</td></tr>
+          <tr><td>Total Order for Tshirt/Jersey</td><td class="number bold" style="color: #4A148C;">₱${clothingTotal}</td></tr>
+          <tr><td>Total Expenses</td><td class="number bold" style="color: #C62828;">₱${totalExp}</td></tr>
+          <tr class="footer-success"><td>NET REMAINING BALANCE (Total Collected - Expenses)</td><td class="number bold">₱${balance}</td></tr>
+        </tbody>
+      </table>
+    `;
   }
 
   html += `</body></html>`;
@@ -636,12 +671,19 @@ function generatePdfExport(category) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
   const dateStr = new Date().toLocaleDateString();
-  const sortedStudents = [...state.students].sort((a, b) => a.name.localeCompare(b.name));
+  const regularStudents = [...state.students].filter(s => !(s.name || '').toLowerCase().includes('borrow funds')).sort((a, b) => a.name.localeCompare(b.name));
+  const borrowStudent = state.students.find(s => (s.name || '').toLowerCase().includes('borrow funds'));
+  const sortedStudents = borrowStudent ? [...regularStudents, borrowStudent] : regularStudents;
+  const sortedExpenses = [...state.expenses].sort((a, b) => (a.date || 0) - (b.date || 0));
 
   const totalColl = state.payments.reduce((sum, p) => sum + (p.amount || 0), 0);
   const clothingTotal = state.clothingOrders.reduce((sum, o) => sum + (o.price || 0), 0);
   const totalExp = state.expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
   const balance = totalColl - totalExp;
+  const unpaidStudentsCount = regularStudents.filter(s => {
+    const paid = state.payments.filter(p => p.studentId === s.id).reduce((sum, p) => sum + (p.amount || 0), 0);
+    return paid <= 0;
+  }).length;
 
   // Title Banner
   doc.setFillColor(31, 78, 120);
@@ -663,6 +705,8 @@ function generatePdfExport(category) {
       const paid = state.payments.filter(p => p.studentId === s.id).reduce((sum, p) => sum + (p.amount || 0), 0);
       return [s.name, paid > 0 ? `₱${paid}` : 'Unpaid'];
     });
+    studentRows.push(['TOTAL COLLECTED', `₱${totalColl}`]);
+    studentRows.push(['UNPAID STUDENTS (Hindi pa nagbabayad)', `${unpaidStudentsCount} student(s)`]);
 
     doc.autoTable({
       startY: startY + 4,
@@ -671,8 +715,21 @@ function generatePdfExport(category) {
       headStyles: { fillColor: [31, 78, 120], textColor: [255, 255, 255] },
       didParseCell: function(data) {
         if (data.section === 'body') {
+          const nameVal = data.row.cells[0].raw;
           const paymentVal = data.row.cells[1].raw;
-          if (paymentVal !== 'Unpaid') {
+          if (nameVal && nameVal.toLowerCase().includes('borrow funds')) {
+            data.cell.styles.fillColor = [255, 224, 178];
+            data.cell.styles.textColor = [230, 81, 0];
+            data.cell.styles.fontStyle = 'bold';
+          } else if (nameVal === 'TOTAL COLLECTED') {
+            data.cell.styles.fillColor = [212, 237, 218];
+            data.cell.styles.textColor = [21, 87, 36];
+            data.cell.styles.fontStyle = 'bold';
+          } else if (nameVal === 'UNPAID STUDENTS (Hindi pa nagbabayad)') {
+            data.cell.styles.fillColor = [255, 235, 238];
+            data.cell.styles.textColor = [198, 40, 40];
+            data.cell.styles.fontStyle = 'bold';
+          } else if (paymentVal !== 'Unpaid') {
             data.cell.styles.fillColor = [212, 237, 218];
             data.cell.styles.textColor = [21, 87, 36];
             data.cell.styles.fontStyle = 'bold';
@@ -694,12 +751,20 @@ function generatePdfExport(category) {
       const studentName = (state.students.find(s => s.id === o.studentId) || {}).name || o.customName || '';
       return [studentName, o.itemType || 'Jersey', o.customName || '', o.customNumber || '', o.size || 'L', `₱${o.price || 0}`];
     });
+    orderRows.push(['TOTAL CLOTHING ORDERS', '', '', '', '', `₱${clothingTotal}`]);
 
     doc.autoTable({
       startY: startY + 4,
       head: [['Student Name', 'Type', 'Name to Print', 'Number', 'Size', 'Payment']],
       body: orderRows,
-      headStyles: { fillColor: [31, 78, 120], textColor: [255, 255, 255] }
+      headStyles: { fillColor: [31, 78, 120], textColor: [255, 255, 255] },
+      didParseCell: function(data) {
+        if (data.section === 'body' && data.row.cells[0].raw === 'TOTAL CLOTHING ORDERS') {
+          data.cell.styles.fillColor = [243, 229, 245];
+          data.cell.styles.textColor = [74, 20, 140];
+          data.cell.styles.fontStyle = 'bold';
+        }
+      }
     });
 
     startY = doc.lastAutoTable.finalY + 12;
@@ -708,30 +773,57 @@ function generatePdfExport(category) {
   if (category === 'FULL_REPORT' || category === 'EXPENSES_SUMMARY') {
     if (startY > 220) { doc.addPage(); startY = 20; }
 
-    // Financial Summary Box
-    doc.setFillColor(232, 245, 233);
-    doc.roundedRect(14, startY, 182, 16, 2, 2, 'F');
-    doc.setTextColor(46, 125, 50);
-    doc.setFontSize(9);
-    doc.text(`Budget Collected: ₱${totalColl}   |   Clothing Orders: ₱${clothingTotal}   |   Expenses: ₱${totalExp}   |   Balance: ₱${balance}`, 18, startY + 10);
-
-    startY += 24;
-
     doc.setFontSize(11);
     doc.setTextColor(31, 78, 120);
     doc.text("EXPENSES", 14, startY);
 
-    const expenseRows = state.expenses.map(e => [
+    const expenseRows = sortedExpenses.map(e => [
       e.date ? new Date(e.date).toLocaleDateString() : dateStr,
       e.description || 'Expense',
       `₱${e.amount || 0}`
     ]);
+    expenseRows.push(['TOTAL EXPENSES', '', `₱${totalExp}`]);
 
     doc.autoTable({
       startY: startY + 4,
       head: [['Date', 'Description / Category', 'Amount']],
       body: expenseRows,
-      headStyles: { fillColor: [31, 78, 120], textColor: [255, 255, 255] }
+      headStyles: { fillColor: [31, 78, 120], textColor: [255, 255, 255] },
+      didParseCell: function(data) {
+        if (data.section === 'body' && data.row.cells[0].raw === 'TOTAL EXPENSES') {
+          data.cell.styles.fillColor = [255, 235, 238];
+          data.cell.styles.textColor = [198, 40, 40];
+          data.cell.styles.fontStyle = 'bold';
+        }
+      }
+    });
+
+    startY = doc.lastAutoTable.finalY + 12;
+
+    if (startY > 220) { doc.addPage(); startY = 20; }
+    doc.setFontSize(11);
+    doc.setTextColor(31, 78, 120);
+    doc.text("NET FINANCIAL SUMMARY", 14, startY);
+
+    const summaryRows = [
+      ['Total Collected from Students', `₱${totalColl}`],
+      ['Total Order for Tshirt/Jersey', `₱${clothingTotal}`],
+      ['Total Expenses', `₱${totalExp}`],
+      ['NET REMAINING BALANCE (Total Collected - Expenses)', `₱${balance}`]
+    ];
+
+    doc.autoTable({
+      startY: startY + 4,
+      head: [['Financial Category', 'Amount']],
+      body: summaryRows,
+      headStyles: { fillColor: [31, 78, 120], textColor: [255, 255, 255] },
+      didParseCell: function(data) {
+        if (data.section === 'body' && data.row.cells[0].raw.startsWith('NET REMAINING BALANCE')) {
+          data.cell.styles.fillColor = [212, 237, 218];
+          data.cell.styles.textColor = [21, 87, 36];
+          data.cell.styles.fontStyle = 'bold';
+        }
+      }
     });
   }
 
