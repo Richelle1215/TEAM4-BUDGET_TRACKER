@@ -67,6 +67,7 @@ class ExportService @Inject constructor(
               .col-payment { min-width: 140px; text-align: right; }
               tr.paid { background-color: #D4EDDA; font-weight: bold; color: #155724; }
               tr.unpaid { background-color: #FFFFFF; }
+              tr.borrow-funds { background-color: #FFE0B2; font-weight: bold; color: #E65100; }
               tr.footer-success { background-color: #D4EDDA; font-weight: bold; color: #155724; }
               tr.footer-danger { background-color: #FFEBEE; font-weight: bold; color: #C62828; }
               tr.footer-purple { background-color: #F3E5F5; font-weight: bold; color: #4A148C; }
@@ -79,14 +80,16 @@ class ExportService @Inject constructor(
             <div class="subtitle">Report Category: ${reportType.title} | Generated: ${dateFormat.format(Date())}</div>
         """.trimIndent())
 
-        val sortedStudents = students.sortedBy { it.name }
+        val regularStudents = students.filterNot { it.name.contains("Borrow Funds", ignoreCase = true) }.sortedBy { it.name }
+        val borrowFundsStudent = students.find { it.name.contains("Borrow Funds", ignoreCase = true) }
+        val sortedStudents = if (borrowFundsStudent != null) regularStudents + borrowFundsStudent else regularStudents
         val sortedExpenses = expenses.sortedBy { it.date }
 
         val totalColl = payments.sumOf { it.amount }
         val totalClothing = clothingOrders.sumOf { it.price }
         val totalExp = expenses.sumOf { it.amount }
         val balance = totalColl - totalExp
-        val unpaidStudentsCount = sortedStudents.count { s -> payments.none { it.studentId == s.id && it.amount > 0.0 } }
+        val unpaidStudentsCount = regularStudents.count { s -> payments.none { it.studentId == s.id && it.amount > 0.0 } }
 
         when (reportType) {
             ReportType.STUDENTS_PAYMENTS -> {
@@ -103,8 +106,13 @@ class ExportService @Inject constructor(
                 """.trimIndent())
 
                 sortedStudents.forEach { s ->
+                    val isBorrow = s.name.contains("Borrow Funds", ignoreCase = true)
                     val paid = payments.filter { it.studentId == s.id }.sumOf { it.amount }
-                    val rowClass = if (paid > 0.0) "paid" else "unpaid"
+                    val rowClass = when {
+                        isBorrow -> "borrow-funds"
+                        paid > 0.0 -> "paid"
+                        else -> "unpaid"
+                    }
                     val paymentText = if (paid > 0.0) "${paid.toInt()}" else "Unpaid"
                     htmlBuilder.append("""
                         <tr class="$rowClass">
@@ -244,8 +252,13 @@ class ExportService @Inject constructor(
                 """.trimIndent())
 
                 sortedStudents.forEach { s ->
+                    val isBorrow = s.name.contains("Borrow Funds", ignoreCase = true)
                     val paid = payments.filter { it.studentId == s.id }.sumOf { it.amount }
-                    val rowClass = if (paid > 0.0) "paid" else "unpaid"
+                    val rowClass = when {
+                        isBorrow -> "borrow-funds"
+                        paid > 0.0 -> "paid"
+                        else -> "unpaid"
+                    }
                     val paymentText = if (paid > 0.0) "${paid.toInt()}" else "Unpaid"
                     htmlBuilder.append("""
                         <tr class="$rowClass">
@@ -428,14 +441,16 @@ class ExportService @Inject constructor(
 
         y = 80f
 
-        val sortedStudents = students.sortedBy { it.name }
+        val regularStudents = students.filterNot { it.name.contains("Borrow Funds", ignoreCase = true) }.sortedBy { it.name }
+        val borrowFundsStudent = students.find { it.name.contains("Borrow Funds", ignoreCase = true) }
+        val sortedStudents = if (borrowFundsStudent != null) regularStudents + borrowFundsStudent else regularStudents
         val sortedExpenses = expenses.sortedBy { it.date }
 
         val totalColl = payments.sumOf { it.amount }
         val totalClothing = clothingOrders.sumOf { it.price }
         val totalExp = expenses.sumOf { it.amount }
         val balance = totalColl - totalExp
-        val unpaidStudentsCount = sortedStudents.count { s -> payments.none { it.studentId == s.id && it.amount > 0.0 } }
+        val unpaidStudentsCount = regularStudents.count { s -> payments.none { it.studentId == s.id && it.amount > 0.0 } }
 
         fun drawTableHeader(headers: List<String>, colWidths: List<Float>, startX: Float = 40f) {
             checkSpace(30f)
@@ -535,10 +550,22 @@ class ExportService @Inject constructor(
             ReportType.STUDENTS_PAYMENTS -> {
                 drawTableHeader(listOf("Full Name", "PAYMENT"), listOf(380f, 135f))
                 sortedStudents.forEach { s ->
+                    val isBorrow = s.name.contains("Borrow Funds", ignoreCase = true)
                     val paid = payments.filter { it.studentId == s.id }.sumOf { it.amount }
                     val isPaid = paid > 0.0
                     val paymentText = if (isPaid) "₱${paid.toInt()}" else "Unpaid"
-                    drawTableRow(listOf(s.name, paymentText), listOf(380f, 135f), isPaid = isPaid)
+
+                    if (isBorrow) {
+                        drawTableRow(
+                            listOf(s.name, paymentText),
+                            listOf(380f, 135f),
+                            bgColor = Color.parseColor("#FFE0B2"),
+                            textColor = Color.parseColor("#E65100"),
+                            isBold = true
+                        )
+                    } else {
+                        drawTableRow(listOf(s.name, paymentText), listOf(380f, 135f), isPaid = isPaid)
+                    }
                 }
                 drawTableRow(
                     listOf("TOTAL COLLECTED", "₱${totalColl.toInt()}"),
@@ -600,10 +627,22 @@ class ExportService @Inject constructor(
                 // 1. Students & Payments Section
                 drawTableHeader(listOf("Full Name", "PAYMENT"), listOf(380f, 135f))
                 sortedStudents.forEach { s ->
+                    val isBorrow = s.name.contains("Borrow Funds", ignoreCase = true)
                     val paid = payments.filter { it.studentId == s.id }.sumOf { it.amount }
                     val isPaid = paid > 0.0
                     val paymentText = if (isPaid) "₱${paid.toInt()}" else "Unpaid"
-                    drawTableRow(listOf(s.name, paymentText), listOf(380f, 135f), isPaid = isPaid)
+
+                    if (isBorrow) {
+                        drawTableRow(
+                            listOf(s.name, paymentText),
+                            listOf(380f, 135f),
+                            bgColor = Color.parseColor("#FFE0B2"),
+                            textColor = Color.parseColor("#E65100"),
+                            isBold = true
+                        )
+                    } else {
+                        drawTableRow(listOf(s.name, paymentText), listOf(380f, 135f), isPaid = isPaid)
+                    }
                 }
                 drawTableRow(
                     listOf("TOTAL COLLECTED", "₱${totalColl.toInt()}"),
