@@ -42,13 +42,13 @@ class FundRepository @Inject constructor(
             "Manarang Rhon Ruszell Marabe", "Marca Arvie", "Mendez Richelle Aguilar",
             "Molina Jade Cedrick Barcoma", "Nano Dennis Kyle Marzan", "Nava Mhyco Allen Kien",
             "Obligacion Reynalen Malabunga", "Oda CJ Coronel", "Paderes Bea Blanca Macandog",
-            "Pangilinan Richard Martin", "Pesebre Aeron Jay", "Pimentel, Mikaela Joy", "Quiñones James Kenneth Balon",
+            "Pesebre Aeron Jay", "Pimentel, Mikaela Joy", "Quiñones James Kenneth Balon",
             "Rafa Razel Ken Hernandez", "Rajas John Nicco Villeno", "Rogacion Rlezza Mae Omaga",
             "San Antonio Mary Ann", "Sanchez Leslie Faye", "Sarical Ella Bardon",
             "Simon Justine Michael Acula", "Suyat Rhoy Jayson", "Tacanay Neil Gaibbriel Tagala",
             "Triñanes John Zidney Hywel", "Vega Riz Lorenz Astrovalo", "Villaluz Jasper Phillip",
             "Villania Crystal Lee Rafer", "Yaneza John Carlo Barbosa", "Yape Adrian",
-            "Yebra Erwin Jr. Balane"
+            "Yebra Erwin Jr. Balane", "Borrow Funds"
         )
     }
 
@@ -90,6 +90,66 @@ class FundRepository @Inject constructor(
                         cloudStudents.forEach { fundDao.insertStudent(it) }
                         deduplicateStudents(cloudStudents)
                     }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+        repositoryScope.launch {
+            try {
+                val allStudents = fundDao.getAllStudents().first()
+                val allPayments = fundDao.getAllPayments().first()
+
+                // 1. Remove Richard Pangilinan if exists
+                val richard = allStudents.find { 
+                    it.name.contains("Pangilinan", ignoreCase = true) || 
+                    it.name.contains("Richard", ignoreCase = true) 
+                }
+                if (richard != null) {
+                    allPayments.filter { it.studentId == richard.id }.forEach { p ->
+                        fundDao.deletePayment(p)
+                        try { firestoreService.deletePayment(p.id) } catch (e: Exception) {}
+                    }
+                    fundDao.deleteStudent(richard)
+                    try { firestoreService.deleteStudent(richard.id) } catch (e: Exception) {}
+                }
+
+                // 2. Remove 7000 payment from Richelle Mendez
+                val richelle = allStudents.find { 
+                    it.name.contains("Mendez", ignoreCase = true) || 
+                    it.name.contains("Richelle", ignoreCase = true) 
+                }
+                if (richelle != null) {
+                    val mendezPayments7000 = allPayments.filter { 
+                        it.studentId == richelle.id && it.amount == 7000.0 
+                    }
+                    mendezPayments7000.forEach { p ->
+                        fundDao.deletePayment(p)
+                        try { firestoreService.deletePayment(p.id) } catch (e: Exception) {}
+                    }
+                }
+
+                // 3. Ensure "Borrow Funds" exists with 7000 payment
+                val borrowFundsStudentId = UUID.nameUUIDFromBytes("Borrow Funds".toByteArray()).toString()
+                if (fundDao.getStudentById(borrowFundsStudentId) == null) {
+                    val student = Student(
+                        id = borrowFundsStudentId,
+                        name = "Borrow Funds"
+                    )
+                    fundDao.insertStudent(student)
+                    try { firestoreService.saveStudent(student) } catch (e: Exception) {}
+                }
+
+                val currentBorrowPayments = fundDao.getAllPayments().first().filter { it.studentId == borrowFundsStudentId }
+                if (currentBorrowPayments.none { it.amount == 7000.0 }) {
+                    val borrowPayment = Payment(
+                        id = UUID.nameUUIDFromBytes("borrow_funds_7000".toByteArray()).toString(),
+                        studentId = borrowFundsStudentId,
+                        amount = 7000.0,
+                        date = System.currentTimeMillis()
+                    )
+                    fundDao.insertPayment(borrowPayment)
+                    try { firestoreService.savePayment(borrowPayment) } catch (e: Exception) {}
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
