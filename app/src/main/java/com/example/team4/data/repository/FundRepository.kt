@@ -51,7 +51,6 @@ class FundRepository @Inject constructor(
             "Yebra Erwin Jr. Balane", "Borrow Funds"
         )
     }
-
     init {
         repositoryScope.launch {
             try {
